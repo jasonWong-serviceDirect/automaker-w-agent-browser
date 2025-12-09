@@ -8,7 +8,6 @@ import { SpecView } from "@/components/views/spec-view";
 import { CodeView } from "@/components/views/code-view";
 import { AgentView } from "@/components/views/agent-view";
 import { SettingsView } from "@/components/views/settings-view";
-import { AnalysisView } from "@/components/views/analysis-view";
 import { AgentToolsView } from "@/components/views/agent-tools-view";
 import { InterviewView } from "@/components/views/interview-view";
 import { ContextView } from "@/components/views/context-view";
@@ -72,8 +71,6 @@ export default function Home() {
         return <AgentView />;
       case "settings":
         return <SettingsView />;
-      case "analysis":
-        return <AnalysisView />;
       case "tools":
         return <AgentToolsView />;
       case "interview":

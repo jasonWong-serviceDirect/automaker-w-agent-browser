@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Project } from "@/lib/electron";
 
-export type ViewMode = "welcome" | "spec" | "board" | "code" | "agent" | "settings" | "analysis" | "tools" | "interview" | "context";
+export type ViewMode = "welcome" | "spec" | "board" | "code" | "agent" | "settings" | "tools" | "interview" | "context";
 export type ThemeMode = "light" | "dark" | "system";
 
 export interface ApiKeys {
@@ -51,23 +51,7 @@ export interface Feature {
   steps: string[];
   status: "backlog" | "in_progress" | "verified";
   images?: FeatureImage[];
-}
-
-export interface FileTreeNode {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  children?: FileTreeNode[];
-  size?: number;
-  extension?: string;
-}
-
-export interface ProjectAnalysis {
-  fileTree: FileTreeNode[];
-  totalFiles: number;
-  totalDirectories: number;
-  filesByExtension: Record<string, number>;
-  analyzedAt: string;
+  startedAt?: string; // ISO timestamp for when the card moved to in_progress
 }
 
 export interface AppState {
@@ -93,10 +77,6 @@ export interface AppState {
 
   // API Keys
   apiKeys: ApiKeys;
-
-  // Project Analysis
-  projectAnalysis: ProjectAnalysis | null;
-  isAnalyzing: boolean;
 
   // Chat Sessions
   chatSessions: ChatSession[];
@@ -152,11 +132,6 @@ export interface AppActions {
   // API Keys actions
   setApiKeys: (keys: Partial<ApiKeys>) => void;
 
-  // Analysis actions
-  setProjectAnalysis: (analysis: ProjectAnalysis | null) => void;
-  setIsAnalyzing: (isAnalyzing: boolean) => void;
-  clearAnalysis: () => void;
-
   // Chat Session actions
   createChatSession: (title?: string) => ChatSession;
   updateChatSession: (sessionId: string, updates: Partial<ChatSession>) => void;
@@ -194,8 +169,6 @@ const initialState: AppState = {
     anthropic: "",
     google: "",
   },
-  projectAnalysis: null,
-  isAnalyzing: false,
   chatSessions: [],
   currentChatSession: null,
   chatHistoryOpen: false,
@@ -284,11 +257,6 @@ export const useAppStore = create<AppState & AppActions>()(
 
       // API Keys actions
       setApiKeys: (keys) => set({ apiKeys: { ...get().apiKeys, ...keys } }),
-
-      // Analysis actions
-      setProjectAnalysis: (analysis) => set({ projectAnalysis: analysis }),
-      setIsAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
-      clearAnalysis: () => set({ projectAnalysis: null, isAnalyzing: false }),
 
       // Chat Session actions
       createChatSession: (title) => {
