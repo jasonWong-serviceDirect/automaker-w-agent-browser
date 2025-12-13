@@ -537,6 +537,30 @@ export class CodexProvider extends BaseProvider {
         supportsTools: true,
         tier: "standard",
       },
+      {
+        id: "gpt-5.1-codex-mini",
+        name: "GPT-5.1 Codex Mini",
+        modelString: "gpt-5.1-codex-mini",
+        provider: "openai-codex",
+        description: "Faster, lightweight Codex model",
+        contextWindow: 256000,
+        maxOutputTokens: 16384,
+        supportsVision: false,
+        supportsTools: true,
+        tier: "basic",
+      },
+      {
+        id: "gpt-5.1",
+        name: "GPT-5.1",
+        modelString: "gpt-5.1",
+        provider: "openai-codex",
+        description: "General-purpose GPT-5.1 model",
+        contextWindow: 256000,
+        maxOutputTokens: 32768,
+        supportsVision: true,
+        supportsTools: true,
+        tier: "standard",
+      },
     ];
   }
 

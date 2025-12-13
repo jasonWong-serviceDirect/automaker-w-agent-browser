@@ -33,6 +33,9 @@ export async function* spawnJSONLProcess(
     ...env,
   };
 
+  console.log(`[SubprocessManager] Spawning: ${command} ${args.slice(0, -1).join(" ")}`);
+  console.log(`[SubprocessManager] Working directory: ${cwd}`);
+
   const childProcess: ChildProcess = spawn(command, args, {
     cwd,
     env: processEnv,
@@ -123,6 +126,7 @@ export async function* spawnJSONLProcess(
   // Wait for process to exit
   const exitCode = await new Promise<number | null>((resolve) => {
     childProcess.on("exit", (code) => {
+      console.log(`[SubprocessManager] Process exited with code: ${code}`);
       resolve(code);
     });
 
@@ -144,7 +148,7 @@ export async function* spawnJSONLProcess(
 
   // Process completed successfully
   if (exitCode === 0 && !stderrOutput) {
-    // Success - no logging needed
+    console.log("[SubprocessManager] Process completed successfully");
   }
 }
 

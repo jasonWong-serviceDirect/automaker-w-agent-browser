@@ -118,6 +118,24 @@ export function createModelsRoutes(): Router {
           supportsVision: true,
           supportsTools: true,
         },
+        {
+          id: "gpt-5.1-codex-mini",
+          name: "GPT-5.1 Codex Mini",
+          provider: "openai-codex",
+          contextWindow: 256000,
+          maxOutputTokens: 16384,
+          supportsVision: false,
+          supportsTools: true,
+        },
+        {
+          id: "gpt-5.1",
+          name: "GPT-5.1",
+          provider: "openai-codex",
+          contextWindow: 256000,
+          maxOutputTokens: 32768,
+          supportsVision: true,
+          supportsTools: true,
+        },
       ];
 
       res.json({ success: true, models });
