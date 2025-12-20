@@ -186,13 +186,73 @@ index 0000000..0000000
 
 ### Directory Filtering
 When scanning non-git directories, automatically excludes:
-- `node_modules`
-- `.git`
-- `.automaker`
-- `dist`, `build`
-- `.next`, `.nuxt`
-- `__pycache__`, `.cache`
-- `coverage`
+- `node_modules`, `.git`, `.automaker`
+- Build outputs: `dist`, `build`, `out`, `tmp`, `.tmp`
+- Framework caches: `.next`, `.nuxt`, `.cache`, `coverage`
+- Language-specific: `__pycache__` (Python), `target` (Rust), `vendor` (Go/PHP), `.gradle` (Gradle), `.venv`/`venv` (Python)
+
+## Error Handling
+
+Git operations can fail for various reasons. This package provides graceful error handling patterns:
+
+### Common Error Scenarios
+
+**1. Repository Not Found**
+```typescript
+const isRepo = await isGitRepo('/path/does/not/exist');
+// Returns: false (no exception thrown)
+```
+
+**2. Not a Git Repository**
+```typescript
+const result = await getGitRepositoryDiffs('/not/a/git/repo');
+// Fallback behavior: treats all files as "new"
+// Returns synthetic diffs for all files in directory
+```
+
+**3. Git Command Failures**
+```typescript
+// Permission errors, corrupted repos, or git not installed
+try {
+  const result = await getGitRepositoryDiffs('/project');
+} catch (error) {
+  // Handle errors from git commands
+  // Errors are logged via @automaker/utils logger
+  console.error('Git operation failed:', error);
+}
+```
+
+**4. File Read Errors**
+```typescript
+// When generating synthetic diffs for inaccessible files
+const diff = await generateSyntheticDiffForNewFile('/path', 'locked-file.txt');
+// Returns placeholder: "[Unable to read file content]"
+// Error is logged but doesn't throw
+```
+
+### Best Practices
+
+1. **Check repository status first**:
+   ```typescript
+   const isRepo = await isGitRepo(path);
+   if (!isRepo) {
+     // Handle non-git case appropriately
+   }
+   ```
+
+2. **Expect non-git directories**:
+   - `getGitRepositoryDiffs()` automatically handles both cases
+   - Always returns a valid result structure
+
+3. **Monitor logs**:
+   - Errors are logged with the `[GitUtils]` prefix
+   - Check logs for permission issues or git configuration problems
+
+4. **Handle edge cases**:
+   - Empty repositories (no commits yet)
+   - Detached HEAD states
+   - Corrupted git repositories
+   - Missing git binary
 
 ## Dependencies
 

@@ -141,7 +141,9 @@ export async function listAllFilesInDirectory(
   // Directories to skip
   const skipDirs = new Set([
     "node_modules", ".git", ".automaker", "dist", "build",
-    ".next", ".nuxt", "__pycache__", ".cache", "coverage"
+    ".next", ".nuxt", "__pycache__", ".cache", "coverage",
+    ".venv", "venv", "target", "vendor", ".gradle",
+    "out", "tmp", ".tmp"
   ]);
 
   try {

@@ -118,6 +118,8 @@ const options: ExecuteOptions = {
 
 None - this is a pure types package.
 
+**IMPORTANT**: This package must NEVER depend on other `@automaker/*` packages to prevent circular dependencies. All other packages depend on this one, making it the foundation of the dependency tree.
+
 ## Used By
 
 - `@automaker/utils`
@@ -127,3 +129,21 @@ None - this is a pure types package.
 - `@automaker/git-utils`
 - `@automaker/server`
 - `@automaker/ui`
+
+## Circular Dependency Prevention
+
+To maintain the package dependency hierarchy and prevent circular dependencies:
+
+1. **Never add dependencies** to other `@automaker/*` packages in `package.json`
+2. **Keep result types here** - For example, `DependencyResolutionResult` should stay in `@automaker/dependency-resolver`, not be moved here
+3. **Import only base types** - Other packages can import from here, but this package cannot import from them
+4. **Document the rule** - When adding new functionality, ensure it follows this constraint
+
+This constraint ensures a clean one-way dependency flow:
+```
+@automaker/types (foundation - no dependencies)
+    ↓
+@automaker/utils, @automaker/platform, etc.
+    ↓
+@automaker/server, @automaker/ui
+```
