@@ -31,7 +31,10 @@ export function useUnviewedValidations(currentProject: Project | null) {
             const hoursSince = (Date.now() - new Date(v.validatedAt).getTime()) / (1000 * 60 * 60);
             return hoursSince <= 24;
           });
-          setCount(unviewed.length);
+          // Only update count if we're still on the same project (guard against race condition)
+          if (projectPathRef.current === projectPath) {
+            setCount(unviewed.length);
+          }
         }
       }
     } catch (err) {
