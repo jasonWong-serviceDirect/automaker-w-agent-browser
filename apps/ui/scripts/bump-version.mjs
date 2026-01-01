@@ -24,11 +24,11 @@ if (!bumpType || !['major', 'minor', 'patch'].includes(bumpType)) {
 const uiPackageJsonPath = join(__dirname, '..', 'package.json');
 const serverPackageJsonPath = join(__dirname, '..', '..', 'server', 'package.json');
 
-function bumpVersion(packageJsonPath: string, packageName: string): string {
+function bumpVersion(packageJsonPath, packageName) {
   try {
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
     const oldVersion = packageJson.version;
-    
+
     // Parse version
     const versionParts = oldVersion.split('.').map(Number);
     if (versionParts.length !== 3) {
@@ -39,7 +39,7 @@ function bumpVersion(packageJsonPath: string, packageName: string): string {
 
     // Bump version
     let [major, minor, patch] = versionParts;
-    
+
     switch (bumpType) {
       case 'major':
         major += 1;
@@ -71,11 +71,11 @@ try {
   // Bump UI package version
   const uiOldVersion = JSON.parse(readFileSync(uiPackageJsonPath, 'utf8')).version;
   const uiNewVersion = bumpVersion(uiPackageJsonPath, '@automaker/ui');
-  
+
   // Bump server package version (sync with UI)
   const serverOldVersion = JSON.parse(readFileSync(serverPackageJsonPath, 'utf8')).version;
   const serverNewVersion = bumpVersion(serverPackageJsonPath, '@automaker/server');
-  
+
   // Verify versions match
   if (uiNewVersion !== serverNewVersion) {
     console.error(`Error: Version mismatch! UI: ${uiNewVersion}, Server: ${serverNewVersion}`);
@@ -90,4 +90,3 @@ try {
   console.error(`Error bumping version: ${error.message}`);
   process.exit(1);
 }
-
