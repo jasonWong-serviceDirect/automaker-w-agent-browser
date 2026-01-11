@@ -41,8 +41,8 @@ function buildEnv(): Record<string, string | undefined> {
       env[key] = process.env[key];
     }
   }
-  // Enable MCP CLI mode to reduce context usage from large MCP tool definitions
-  env['ENABLE_EXPERIMENTAL_MCP_CLI'] = 'true';
+  // Disabled: ENABLE_EXPERIMENTAL_MCP_CLI was causing MCP tools not to be exposed
+  // env['ENABLE_EXPERIMENTAL_MCP_CLI'] = 'true';
   return env;
 }
 
