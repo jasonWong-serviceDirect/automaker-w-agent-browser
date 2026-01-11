@@ -392,6 +392,7 @@ Important rules:
 - Provide clear, actionable descriptions
 - Maintain category consistency (feature, bug, enhancement, refactor)
 - When adding dependencies, ensure the referenced features exist or are being added in the same plan
+- **CRITICAL**: Do NOT create features for Playwright tests, E2E tests, unit tests, visual QA, accessibility testing, or any automated testing. Verification happens during implementation using Chrome - testing is NOT a separate feature.
 `;
 
 export const DEFAULT_BACKLOG_PLAN_USER_PROMPT_TEMPLATE = `Current Features in Backlog:
