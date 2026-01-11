@@ -202,7 +202,6 @@ export class ClaudeChromeProvider extends CliProvider {
     model = aliases[model] || model;
 
     const cliArgs: string[] = [
-      '--chrome', // Enable Chrome integration
       '-p', // Print mode (non-interactive)
       '--output-format',
       'stream-json',
@@ -222,7 +221,7 @@ export class ClaudeChromeProvider extends CliProvider {
       cliArgs.push('--tools', ''); // Empty string disables all tools
     }
 
-    cliArgs.push('-'); // Read prompt from stdin
+    cliArgs.push('--', '-'); // -- terminates options, - reads prompt from stdin
 
     return cliArgs;
   }
@@ -404,6 +403,17 @@ export class ClaudeChromeProvider extends CliProvider {
     const promptText = this.extractPromptText(options);
 
     const cliArgs = this.buildCliArgs(options);
+
+    // Write MCP config to temp file if provided (--mcp-config expects file path)
+    let mcpConfigFile: string | null = null;
+    if (options.mcpServers && Object.keys(options.mcpServers).length > 0) {
+      mcpConfigFile = path.join(os.tmpdir(), `automaker-mcp-${Date.now()}.json`);
+      const mcpConfig = JSON.stringify({ mcpServers: options.mcpServers }, null, 2);
+      fs.writeFileSync(mcpConfigFile, mcpConfig);
+      cliArgs.splice(cliArgs.indexOf('--'), 0, '--mcp-config', mcpConfigFile);
+      logger.debug(`MCP config written to: ${mcpConfigFile}`);
+    }
+
     const subprocessOptions = this.buildSubprocessOptions(options, cliArgs);
 
     // Pass prompt via stdin
@@ -453,6 +463,16 @@ export class ClaudeChromeProvider extends CliProvider {
         );
       }
       throw error;
+    } finally {
+      // Clean up temp MCP config file
+      if (mcpConfigFile && fs.existsSync(mcpConfigFile)) {
+        try {
+          fs.unlinkSync(mcpConfigFile);
+          logger.debug(`Cleaned up MCP config: ${mcpConfigFile}`);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
     }
   }
 

@@ -5,6 +5,26 @@
 import { spawn, type ChildProcess } from 'child_process';
 import readline from 'readline';
 
+/**
+ * Kill a process and all its descendants by killing the process group.
+ * Requires the process to have been spawned with detached: true.
+ */
+function killProcessGroup(childProcess: ChildProcess, signal: NodeJS.Signals = 'SIGTERM'): void {
+  if (childProcess.pid) {
+    try {
+      // Negative PID kills the entire process group
+      process.kill(-childProcess.pid, signal);
+    } catch (err) {
+      // Process may already be dead - try direct kill as fallback
+      try {
+        childProcess.kill(signal);
+      } catch {
+        // Already dead, ignore
+      }
+    }
+  }
+}
+
 export interface SubprocessOptions {
   command: string;
   args: string[];
@@ -49,6 +69,8 @@ export async function* spawnJSONLProcess(options: SubprocessOptions): AsyncGener
     env: processEnv,
     // Use 'pipe' for stdin when we need to write data, otherwise 'ignore'
     stdio: [stdinData ? 'pipe' : 'ignore', 'pipe', 'pipe'],
+    // Create new process group so we can kill all descendants
+    detached: true,
   });
 
   // Write stdin data if provided
@@ -80,7 +102,7 @@ export async function* spawnJSONLProcess(options: SubprocessOptions): AsyncGener
       const elapsed = Date.now() - lastOutputTime;
       if (elapsed >= timeout) {
         console.error(`[SubprocessManager] Process timeout: no output for ${timeout}ms`);
-        childProcess.kill('SIGTERM');
+        killProcessGroup(childProcess);
       }
     }, timeout);
   };
@@ -91,11 +113,11 @@ export async function* spawnJSONLProcess(options: SubprocessOptions): AsyncGener
   let abortHandler: (() => void) | null = null;
   if (abortController) {
     abortHandler = () => {
-      console.log('[SubprocessManager] Abort signal received, killing process');
+      console.log('[SubprocessManager] Abort signal received, killing process group');
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);
       }
-      childProcess.kill('SIGTERM');
+      killProcessGroup(childProcess);
     };
     // Check if already aborted, if so call handler immediately
     if (abortController.signal.aborted) {
@@ -198,6 +220,8 @@ export async function spawnProcess(options: SubprocessOptions): Promise<Subproce
       cwd,
       env: processEnv,
       stdio: ['ignore', 'pipe', 'pipe'],
+      // Create new process group so we can kill all descendants
+      detached: true,
     });
 
     let stdout = '';
@@ -227,7 +251,7 @@ export async function spawnProcess(options: SubprocessOptions): Promise<Subproce
     if (abortController) {
       abortHandler = () => {
         cleanupAbortListener();
-        childProcess.kill('SIGTERM');
+        killProcessGroup(childProcess);
         reject(new Error('Process aborted'));
       };
       abortController.signal.addEventListener('abort', abortHandler);
