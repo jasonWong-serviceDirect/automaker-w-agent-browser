@@ -44,8 +44,8 @@ export function createCommitHandler() {
         return;
       }
 
-      // Stage all changes
-      await execAsync('git add -A', { cwd: worktreePath });
+      // Stage all changes (exclude .automaker directory)
+      await execAsync('git add -A -- ":!.automaker"', { cwd: worktreePath });
 
       // Create commit
       await execAsync(`git commit -m "${message.replace(/"/g, '\\"')}"`, {

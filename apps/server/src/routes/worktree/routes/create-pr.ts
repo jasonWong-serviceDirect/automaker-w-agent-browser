@@ -78,9 +78,9 @@ export function createCreatePRHandler() {
         logger.debug(`Committing changes with message: ${message}`);
 
         try {
-          // Stage all changes
+          // Stage all changes (exclude .automaker directory)
           logger.debug(`Running: git add -A`);
-          await execAsync('git add -A', { cwd: worktreePath, env: execEnv });
+          await execAsync('git add -A -- ":!.automaker"', { cwd: worktreePath, env: execEnv });
 
           // Create commit
           logger.debug(`Running: git commit`);

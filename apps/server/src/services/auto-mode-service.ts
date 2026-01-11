@@ -9,6 +9,7 @@
  * - Verification and merge workflows
  */
 
+import Anthropic from '@anthropic-ai/sdk';
 import { ProviderFactory } from '../providers/provider-factory.js';
 import type {
   ExecuteOptions,
@@ -52,6 +53,7 @@ import {
   getMCPServersFromSettings,
   getPromptCustomization,
 } from '../lib/settings-helpers.js';
+import { getApiKey } from '../routes/setup/common.js';
 
 const execAsync = promisify(exec);
 
@@ -1209,16 +1211,27 @@ Address the follow-up instructions above. Review the previous work and make the 
 
       // Load feature for commit message
       const feature = await this.loadFeature(projectPath, featureId);
-      const commitMessage = feature
-        ? `feat: ${this.extractTitleFromDescription(
-            feature.description
-          )}\n\nImplemented by Automaker auto-mode`
-        : `feat: Feature ${featureId}`;
+      const title = feature
+        ? this.extractTitleFromDescription(feature.description)
+        : `Feature ${featureId}`;
 
-      // Stage and commit
-      await execAsync('git add -A', { cwd: workDir });
-      await execAsync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`, {
+      // Get AI-generated summary from agent output
+      const summary = await this.summarizeAgentOutput(projectPath, featureId);
+
+      // Build commit message with title, summary, and feature ID
+      const commitParts = [`feat: ${title}`];
+      if (summary) {
+        commitParts.push('', summary);
+      }
+      commitParts.push('', `Feature-Id: ${featureId}`);
+      const commitMessage = commitParts.join('\n');
+
+      // Stage and commit (exclude .automaker directory which should never be committed)
+      await execAsync('git add -A -- ":!.automaker"', { cwd: workDir });
+      // Use heredoc for multiline commit message
+      await execAsync(`git commit -m "$(cat <<'EOF'\n${commitMessage}\nEOF\n)"`, {
         cwd: workDir,
+        shell: '/bin/bash',
       });
 
       // Get commit hash
@@ -1697,6 +1710,7 @@ Format your response as a structured markdown document.`;
     try {
       const data = (await secureFs.readFile(featurePath, 'utf-8')) as string;
       const feature = JSON.parse(data);
+      const previousStatus = feature.status;
       feature.status = status;
       feature.updatedAt = new Date().toISOString();
       // Set justFinishedAt timestamp when moving to waiting_approval (agent just completed)
@@ -1708,6 +1722,13 @@ Format your response as a structured markdown document.`;
         feature.justFinishedAt = undefined;
       }
       await secureFs.writeFile(featurePath, JSON.stringify(feature, null, 2));
+
+      // Auto-commit when moving to 'verified' status
+      if (status === 'verified' && previousStatus !== 'verified') {
+        logger.info(`Auto-committing feature ${featureId} on status change to verified`);
+        const worktreePath = path.join(projectPath, '.worktrees', featureId);
+        await this.commitFeature(projectPath, featureId, worktreePath);
+      }
     } catch {
       // Feature file may not exist
     }
@@ -1836,6 +1857,67 @@ Format your response as a structured markdown document.`;
 
     // Truncate to 60 characters and add ellipsis
     return firstLine.substring(0, 57) + '...';
+  }
+
+  /**
+   * Summarize agent output using Claude API for commit messages
+   * @returns A concise summary suitable for a commit message body, or null if unavailable
+   */
+  private async summarizeAgentOutput(
+    projectPath: string,
+    featureId: string
+  ): Promise<string | null> {
+    try {
+      // Get the agent output
+      const agentOutput = await this.featureLoader.getAgentOutput(projectPath, featureId);
+      if (!agentOutput || agentOutput.trim().length === 0) {
+        return null;
+      }
+
+      // Get API key from environment or stored keys
+      const apiKey = process.env.ANTHROPIC_API_KEY || getApiKey('anthropic');
+      if (!apiKey) {
+        logger.warn('No Anthropic API key available for summarization');
+        return null;
+      }
+
+      const client = new Anthropic({ apiKey });
+
+      // Truncate agent output if too long (keep under ~8k tokens worth)
+      const maxLength = 30000;
+      const truncatedOutput =
+        agentOutput.length > maxLength
+          ? agentOutput.substring(0, maxLength) + '\n\n[... truncated ...]'
+          : agentOutput;
+
+      const response = await client.messages.create({
+        model: 'claude-haiku-4-5-20250514',
+        max_tokens: 300,
+        messages: [
+          {
+            role: 'user',
+            content: `Summarize the following agent implementation log for a git commit message.
+Provide 2-4 bullet points describing the key changes made. Be concise and focus on what was implemented, not the process.
+
+Agent output:
+${truncatedOutput}
+
+Respond with ONLY the bullet points, no preamble or explanation.`,
+          },
+        ],
+      });
+
+      // Extract text from response
+      const textContent = response.content.find((c) => c.type === 'text');
+      if (textContent && textContent.type === 'text') {
+        return textContent.text.trim();
+      }
+
+      return null;
+    } catch (error) {
+      logger.error(`Failed to summarize agent output for ${featureId}:`, error);
+      return null;
+    }
   }
 
   /**
