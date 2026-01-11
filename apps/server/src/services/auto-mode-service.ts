@@ -2028,7 +2028,7 @@ When done, wrap your final summary in <summary> tags like this:
 
 This helps parse your summary correctly in the output logs.`;
     } else {
-      // Automated verification - implement and verify using Chrome
+      // Automated verification - implement and verify using chrome-devtools-mcp
       prompt += `
 ## Instructions
 
@@ -2037,21 +2037,21 @@ Implement this feature using an iterative approach with visual verification:
 1. First, explore the codebase to understand the existing structure
 2. Plan your implementation approach
 3. Implement the changes in small, testable increments
-4. **After each significant change, use Chrome to visually verify it works correctly**
+4. **After each significant change, use chrome-devtools-mcp to visually verify it works correctly**
 5. If something doesn't work as expected, fix it immediately before continuing
 6. Repeat until all requirements are satisfied
 
-## Verification with Chrome (REQUIRED)
+## Verification with chrome-devtools-mcp (REQUIRED)
 
-You have access to Chrome tools for visual verification. After implementing changes:
+You have access to \`chrome-devtools-mcp\` tools for visual verification. Use these MCP tools to test and validate your changes:
 
-1. **Navigate to the relevant page** in Chrome to see your changes
+1. **Navigate to the relevant page** using chrome-devtools-mcp to see your changes
 2. **Visually inspect** that the UI looks correct and functions as expected
 3. **Interact with the feature** - click buttons, fill forms, trigger the functionality
 4. **Check for errors** in the console or unexpected behavior
 5. **If anything is wrong, fix it and re-verify** before moving on
 
-Do NOT consider a task complete until you have visually confirmed it works in Chrome. Continue iterating on the implementation until the feature meets all requirements.
+Do NOT consider a task complete until you have visually confirmed it works using chrome-devtools-mcp. Continue iterating on the implementation until the feature meets all requirements.
 
 When done, wrap your final summary in <summary> tags like this:
 
@@ -2065,7 +2065,7 @@ When done, wrap your final summary in <summary> tags like this:
 - [List of files]
 
 ### Verification Status
-- [Describe what was visually verified in Chrome]
+- [Describe what was visually verified using chrome-devtools-mcp]
 
 ### Notes for Developer
 - [Any important notes]
@@ -2269,19 +2269,19 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
     let authInstructions = '';
     if (authInjectionScript) {
       authInstructions = `
-## Chrome Authentication Setup (REQUIRED FIRST STEP)
+## chrome-devtools-mcp Authentication Setup (REQUIRED FIRST STEP)
 
-Before doing ANY visual verification in Chrome, you MUST authenticate the browser:
+Before doing ANY visual verification with chrome-devtools-mcp, you MUST authenticate the browser:
 
-1. Navigate to the site's URL first (any page)
-2. Open the browser console and run this script to inject the auth session:
+1. Use chrome-devtools-mcp to navigate to the site's URL first (any page)
+2. Use chrome-devtools-mcp to run this script in the browser console to inject the auth session:
 \`\`\`javascript
 ${authInjectionScript}
 \`\`\`
 3. Reload the page after injecting the session
 4. You should now be logged in as the test user
 
-Do this ONCE at the start before any other Chrome interactions.
+Do this ONCE at the start before any other chrome-devtools-mcp interactions.
 
 `;
     }
