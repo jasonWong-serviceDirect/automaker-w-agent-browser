@@ -164,7 +164,6 @@ export class ProviderFactory {
 
 // Import providers for registration side-effects
 import { ClaudeProvider } from './claude-provider.js';
-import { ClaudeChromeProvider } from './claude-chrome-provider.js';
 import { CursorProvider } from './cursor-provider.js';
 
 // Register Claude provider - uses Claude Agent SDK

@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ProviderFactory } from '@/providers/provider-factory.js';
-import { ClaudeChromeProvider } from '@/providers/claude-chrome-provider.js';
+import { ClaudeProvider } from '@/providers/claude-provider.js';
 import { CursorProvider } from '@/providers/cursor-provider.js';
-
-// Claude provider now uses ClaudeChromeProvider (with --chrome flag)
-const ClaudeProvider = ClaudeChromeProvider;
 
 describe('provider-factory.ts', () => {
   let consoleSpy: any;
