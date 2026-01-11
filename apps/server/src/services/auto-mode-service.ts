@@ -54,6 +54,13 @@ import {
   getPromptCustomization,
 } from '../lib/settings-helpers.js';
 import { getApiKey } from '../routes/setup/common.js';
+import {
+  getSupabaseSession,
+  generateSessionInjectionScript,
+  type SupabaseSession,
+} from '../lib/supabase-auth.js';
+import * as fs from 'fs/promises';
+import * as dotenv from 'dotenv';
 
 const execAsync = promisify(exec);
 
@@ -2169,9 +2176,61 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
     const enableSandboxMode = await getEnableSandboxModeSetting(this.settingsService, '[AutoMode]');
 
     // Load MCP servers from settings (global setting only)
-    const mcpServers = await getMCPServersFromSettings(this.settingsService, '[AutoMode]');
+    const baseMcpServers = await getMCPServersFromSettings(this.settingsService, '[AutoMode]');
 
-    // Load MCP permission settings (global setting only)
+    // Add per-feature Chrome MCP with isolated user-data-dir
+    const mcpServers = {
+      ...baseMcpServers,
+      [`chrome-${featureId}`]: {
+        type: 'stdio' as const,
+        command: 'npx',
+        args: ['chrome-devtools-mcp@latest', `--user-data-dir=/tmp/automaker-chrome/${featureId}`],
+      },
+    };
+
+    // Try to load test credentials and get auth session for Chrome
+    let supabaseSession: SupabaseSession | null = null;
+    let authInjectionScript: string | null = null;
+    try {
+      const envTestPath = path.join(finalProjectPath, '.env.test');
+      const envTestContent = await fs.readFile(envTestPath, 'utf-8');
+      const envTestParsed = dotenv.parse(envTestContent);
+
+      // Also load main .env for Supabase URL
+      const envPath = path.join(finalProjectPath, '.env');
+      let envParsed: Record<string, string> = {};
+      try {
+        const envContent = await fs.readFile(envPath, 'utf-8');
+        envParsed = dotenv.parse(envContent);
+      } catch {
+        // .env might not exist, try .env.local
+        const envLocalPath = path.join(finalProjectPath, '.env.local');
+        try {
+          const envLocalContent = await fs.readFile(envLocalPath, 'utf-8');
+          envParsed = dotenv.parse(envLocalContent);
+        } catch {
+          // Ignore - no env file found
+        }
+      }
+
+      const supabaseUrl = envParsed.VITE_SUPABASE_URL || envParsed.SUPABASE_URL;
+      const supabaseAnonKey = envParsed.VITE_SUPABASE_ANON_KEY || envParsed.SUPABASE_ANON_KEY;
+      const testEmail = envTestParsed.TEST_USER_EMAIL;
+      const testPassword = envTestParsed.TEST_USER_PASSWORD;
+
+      if (supabaseUrl && supabaseAnonKey && testEmail && testPassword) {
+        supabaseSession = await getSupabaseSession({
+          supabaseUrl,
+          supabaseAnonKey,
+          email: testEmail,
+          password: testPassword.replace(/^"|"$/g, ''), // Strip surrounding quotes
+        });
+        authInjectionScript = generateSessionInjectionScript(supabaseUrl, supabaseSession);
+        logger.info(`Got Supabase auth session for feature ${featureId}`);
+      }
+    } catch (error) {
+      logger.debug(`No test credentials available for feature ${featureId}: ${error}`);
+    }
 
     // Build SDK options using centralized configuration for feature implementation
     const sdkOptions = createAutoModeOptions({
@@ -2206,11 +2265,32 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
       false // don't duplicate paths in text
     );
 
+    // Build auth injection instructions if we have credentials
+    let authInstructions = '';
+    if (authInjectionScript) {
+      authInstructions = `
+## Chrome Authentication Setup (REQUIRED FIRST STEP)
+
+Before doing ANY visual verification in Chrome, you MUST authenticate the browser:
+
+1. Navigate to the site's URL first (any page)
+2. Open the browser console and run this script to inject the auth session:
+\`\`\`javascript
+${authInjectionScript}
+\`\`\`
+3. Reload the page after injecting the session
+4. You should now be logged in as the test user
+
+Do this ONCE at the start before any other Chrome interactions.
+
+`;
+    }
+
     // Wrap prompt with ralph-loop for iterative execution
     // This enables Chrome-based validation for UI work and TDD for non-UI work
     const ralphLoopPrompt = `/ralph-loop:ralph-loop --max-iterations 50 --completion-promise "DONE"
 
-${promptContent}`;
+${authInstructions}${promptContent}`;
 
     // Debug: Log if system prompt is provided
     if (options?.systemPrompt) {
