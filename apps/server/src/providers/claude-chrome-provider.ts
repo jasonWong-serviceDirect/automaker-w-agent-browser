@@ -207,6 +207,7 @@ export class ClaudeChromeProvider extends CliProvider {
       '--output-format',
       'stream-json',
       '--verbose', // Required for stream-json output
+      '--dangerously-skip-permissions', // Allow file writes and command execution in automated mode
       '--model',
       model,
     ];
