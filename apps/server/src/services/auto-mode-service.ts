@@ -1914,34 +1914,30 @@ When done, wrap your final summary in <summary> tags like this:
 
 This helps parse your summary correctly in the output logs.`;
     } else {
-      // Automated testing - implement and verify with Playwright
+      // Automated verification - implement and verify using Chrome
       prompt += `
 ## Instructions
 
-Implement this feature by:
+Implement this feature using an iterative approach with visual verification:
+
 1. First, explore the codebase to understand the existing structure
 2. Plan your implementation approach
-3. Write the necessary code changes
-4. Ensure the code follows existing patterns and conventions
+3. Implement the changes in small, testable increments
+4. **After each significant change, use Chrome to visually verify it works correctly**
+5. If something doesn't work as expected, fix it immediately before continuing
+6. Repeat until all requirements are satisfied
 
-## Verification with Playwright (REQUIRED)
+## Verification with Chrome (REQUIRED)
 
-After implementing the feature, you MUST verify it works correctly using Playwright:
+You have access to Chrome tools for visual verification. After implementing changes:
 
-1. **Create a temporary Playwright test** to verify the feature works as expected
-2. **Run the test** to confirm the feature is working
-3. **Delete the test file** after verification - this is a temporary verification test, not a permanent test suite addition
+1. **Navigate to the relevant page** in Chrome to see your changes
+2. **Visually inspect** that the UI looks correct and functions as expected
+3. **Interact with the feature** - click buttons, fill forms, trigger the functionality
+4. **Check for errors** in the console or unexpected behavior
+5. **If anything is wrong, fix it and re-verify** before moving on
 
-Example verification workflow:
-\`\`\`bash
-# Create a simple verification test
-npx playwright test my-verification-test.spec.ts
-
-# After successful verification, delete the test
-rm my-verification-test.spec.ts
-\`\`\`
-
-The test should verify the core functionality of the feature. If the test fails, fix the implementation and re-test.
+Do NOT consider a task complete until you have visually confirmed it works in Chrome. Continue iterating on the implementation until the feature meets all requirements.
 
 When done, wrap your final summary in <summary> tags like this:
 
@@ -1955,7 +1951,7 @@ When done, wrap your final summary in <summary> tags like this:
 - [List of files]
 
 ### Verification Status
-- [Describe how the feature was verified with Playwright]
+- [Describe what was visually verified in Chrome]
 
 ### Notes for Developer
 - [Any important notes]
