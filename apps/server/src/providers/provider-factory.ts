@@ -75,10 +75,18 @@ export class ProviderFactory {
    * Get the appropriate provider for a given model ID
    *
    * @param modelId Model identifier (e.g., "claude-opus-4-5-20251101", "cursor-gpt-4o", "cursor-auto")
+   * @param options Optional configuration
+   * @param options.useChromeMode Whether to use Chrome mode (default: true). When false, uses ClaudeProvider instead of ClaudeChromeProvider
    * @returns Provider instance for the model
    */
-  static getProviderForModel(modelId: string): BaseProvider {
+  static getProviderForModel(modelId: string, options?: { useChromeMode?: boolean }): BaseProvider {
     const providerName = this.getProviderNameForModel(modelId);
+
+    // For Claude provider, check if Chrome mode should be used
+    if (providerName === 'claude' && options?.useChromeMode === false) {
+      return new ClaudeProvider();
+    }
+
     const provider = this.getProviderByName(providerName);
 
     if (!provider) {

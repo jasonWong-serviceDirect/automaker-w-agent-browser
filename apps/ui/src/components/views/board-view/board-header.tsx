@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Plus, Bot, Wand2, Pencil } from 'lucide-react';
+import { Plus, Bot, Wand2, Pencil, Chrome } from 'lucide-react';
 import { KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts';
 import { ClaudeUsagePopover } from '@/components/claude-usage-popover';
 import { useAppStore } from '@/store/app-store';
@@ -16,6 +16,8 @@ interface BoardHeaderProps {
   onConcurrencyChange: (value: number) => void;
   isAutoModeRunning: boolean;
   onAutoModeToggle: (enabled: boolean) => void;
+  useChromeMode: boolean;
+  onChromeModeToggle: (enabled: boolean) => void;
   onAddFeature: () => void;
   onOpenPlanDialog: () => void;
   onOpenModifyDialog: () => void;
@@ -34,6 +36,8 @@ export function BoardHeader({
   onConcurrencyChange,
   isAutoModeRunning,
   onAutoModeToggle,
+  useChromeMode,
+  onChromeModeToggle,
   onAddFeature,
   onOpenPlanDialog,
   onOpenModifyDialog,
@@ -98,6 +102,23 @@ export function BoardHeader({
               checked={isAutoModeRunning}
               onCheckedChange={onAutoModeToggle}
               data-testid="auto-mode-toggle"
+            />
+          </div>
+        )}
+
+        {/* Chrome Mode Toggle - only show after mount to prevent hydration issues */}
+        {isMounted && (
+          <div className={controlContainerClass} data-testid="chrome-mode-toggle-container">
+            <Chrome className="w-4 h-4 text-muted-foreground" />
+            <Label htmlFor="chrome-mode-toggle" className="text-sm font-medium cursor-pointer">
+              Chrome
+            </Label>
+            <Switch
+              id="chrome-mode-toggle"
+              checked={useChromeMode}
+              onCheckedChange={onChromeModeToggle}
+              disabled={maxConcurrency > 1}
+              data-testid="chrome-mode-toggle"
             />
           </div>
         )}

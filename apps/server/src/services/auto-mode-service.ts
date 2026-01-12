@@ -423,6 +423,7 @@ export class AutoModeService {
     providedWorktreePath?: string,
     options?: {
       continuationPrompt?: string;
+      useChromeMode?: boolean;
     }
   ): Promise<void> {
     if (this.runningFeatures.has(featureId)) {
@@ -533,7 +534,8 @@ export class AutoModeService {
         logger.info(`Using continuation prompt for feature ${featureId}`);
       } else {
         // Normal flow: build prompt with planning phase
-        const featurePrompt = this.buildFeaturePrompt(feature);
+        const useChromeMode = options?.useChromeMode ?? true;
+        const featurePrompt = this.buildFeaturePrompt(feature, useChromeMode);
         const planningPrefix = await this.getPlanningPromptPrefix(feature);
         prompt = planningPrefix + featurePrompt;
 
@@ -565,6 +567,7 @@ export class AutoModeService {
 
       // Run the agent with the feature's model and images
       // Context files are passed as system prompt for higher priority
+      const useChromeForAgent = options?.useChromeMode ?? true;
       await this.runAgent(
         workDir,
         featureId,
@@ -580,6 +583,7 @@ export class AutoModeService {
           systemPrompt: contextFilesPrompt || undefined,
           autoLoadClaudeMd,
           thinkingLevel: feature.thinkingLevel,
+          useChromeMode: useChromeForAgent,
         }
       );
 
@@ -1953,7 +1957,7 @@ Respond with ONLY the bullet points, no preamble or explanation.`,
     return planningPrompt + '\n\n---\n\n## Feature Request\n\n';
   }
 
-  private buildFeaturePrompt(feature: Feature): string {
+  private buildFeaturePrompt(feature: Feature, useChromeMode: boolean = true): string {
     const title = this.extractTitleFromDescription(feature.description);
 
     let prompt = `## Feature Implementation Task
@@ -2020,7 +2024,7 @@ When done, wrap your final summary in <summary> tags like this:
 </summary>
 
 This helps parse your summary correctly in the output logs.`;
-    } else {
+    } else if (useChromeMode) {
       // Automated verification - implement and verify using Chrome
       prompt += `
 ## Instructions
@@ -2065,6 +2069,50 @@ When done, wrap your final summary in <summary> tags like this:
 </summary>
 
 This helps parse your summary correctly in the output logs.`;
+    } else {
+      // Automated verification - implement and verify using Playwright tests (Chrome disabled)
+      prompt += `
+## Instructions
+
+Implement this feature using an iterative approach with test-based verification:
+
+1. First, explore the codebase to understand the existing structure
+2. Plan your implementation approach
+3. Implement the changes in small, testable increments
+4. **After each significant change, run the Playwright tests to verify it works correctly**
+5. If tests fail, fix the issues immediately before continuing
+6. Repeat until all requirements are satisfied and tests pass
+
+## Verification with Playwright Tests (REQUIRED)
+
+Use existing Playwright tests to verify your changes work correctly. After implementing changes:
+
+1. **Run the relevant tests** to verify your changes work as expected
+2. **Check test output** for any failures or errors
+3. **If tests fail, fix the code** and re-run tests before moving on
+4. **Add new tests if needed** for new functionality
+
+Do NOT consider a task complete until all relevant tests pass. Continue iterating on the implementation until the feature meets all requirements.
+
+When done, wrap your final summary in <summary> tags like this:
+
+<summary>
+## Summary: [Feature Title]
+
+### Changes Implemented
+- [List of changes made]
+
+### Files Modified
+- [List of files]
+
+### Test Results
+- [Describe which tests were run and their status]
+
+### Notes for Developer
+- [Any important notes]
+</summary>
+
+This helps parse your summary correctly in the output logs.`;
     }
 
     return prompt;
@@ -2086,6 +2134,7 @@ This helps parse your summary correctly in the output logs.`;
       systemPrompt?: string;
       autoLoadClaudeMd?: boolean;
       thinkingLevel?: ThinkingLevel;
+      useChromeMode?: boolean;
     }
   ): Promise<void> {
     const finalProjectPath = options?.projectPath || projectPath;
@@ -2194,9 +2243,12 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
     );
 
     // Get provider for this model
-    const provider = ProviderFactory.getProviderForModel(finalModel);
+    const useChromeMode = options?.useChromeMode ?? true;
+    const provider = ProviderFactory.getProviderForModel(finalModel, { useChromeMode });
 
-    logger.info(`Using provider "${provider.getName()}" for model "${finalModel}"`);
+    logger.info(
+      `Using provider "${provider.getName()}" for model "${finalModel}", useChromeMode: ${useChromeMode}`
+    );
 
     // Build prompt content with images using utility
     const { content: promptContent } = await buildPromptWithImages(
