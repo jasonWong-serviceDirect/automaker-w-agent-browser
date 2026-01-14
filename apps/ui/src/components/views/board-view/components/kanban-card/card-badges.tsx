@@ -257,7 +257,7 @@ export function PriorityBadges({ feature }: PriorityBadgesProps) {
               </CardBadge>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              <p>UI feature - uses Chrome for verification</p>
+              <p>UI feature - uses browser for verification</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

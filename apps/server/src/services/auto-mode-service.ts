@@ -19,8 +19,9 @@ import type {
   PipelineStep,
   ThinkingLevel,
   PlanningMode,
+  BrowserTestSettings,
 } from '@automaker/types';
-import { DEFAULT_PHASE_MODELS, isUiFeature } from '@automaker/types';
+import { DEFAULT_PHASE_MODELS } from '@automaker/types';
 import {
   buildPromptWithImages,
   isAbortError,
@@ -534,10 +535,15 @@ export class AutoModeService {
         logger.info(`Using continuation prompt for feature ${featureId}`);
       } else {
         // Normal flow: build prompt with planning phase
-        // Only use Chrome mode for UI features when globally enabled
-        const globalChromeEnabled = options?.useChromeMode ?? true;
-        const useChromeMode = globalChromeEnabled && isUiFeature(feature);
-        const featurePrompt = this.buildFeaturePrompt(feature, useChromeMode);
+        // Load project settings for browser test configuration
+        const projectSettings = await this.settingsService?.getProjectSettings(projectPath);
+        const browserTestSettings = projectSettings?.browserTest;
+
+        // Browser mode enabled when toggle is on and settings are configured
+        const globalBrowserEnabled = options?.useChromeMode ?? false;
+        const useBrowserMode = globalBrowserEnabled && !!browserTestSettings;
+
+        const featurePrompt = this.buildFeaturePrompt(feature, useBrowserMode, browserTestSettings);
         const planningPrefix = await this.getPlanningPromptPrefix(feature);
         prompt = planningPrefix + featurePrompt;
 
@@ -569,8 +575,7 @@ export class AutoModeService {
 
       // Run the agent with the feature's model and images
       // Context files are passed as system prompt for higher priority
-      // Only use Chrome mode for UI features when globally enabled
-      const useChromeForAgent = (options?.useChromeMode ?? true) && isUiFeature(feature);
+      // Note: useChromeMode is now deprecated - we use agent-browser via prompts instead
       await this.runAgent(
         workDir,
         featureId,
@@ -586,7 +591,7 @@ export class AutoModeService {
           systemPrompt: contextFilesPrompt || undefined,
           autoLoadClaudeMd,
           thinkingLevel: feature.thinkingLevel,
-          useChromeMode: useChromeForAgent,
+          useChromeMode: false, // Deprecated - browser testing via agent-browser prompts
         }
       );
 
@@ -1935,7 +1940,11 @@ Respond with ONLY the bullet points, no preamble or explanation.`,
     return planningPrompt + '\n\n---\n\n## Feature Request\n\n';
   }
 
-  private buildFeaturePrompt(feature: Feature, useChromeMode: boolean = true): string {
+  private buildFeaturePrompt(
+    feature: Feature,
+    useBrowserMode: boolean = false,
+    browserTestSettings?: BrowserTestSettings
+  ): string {
     const title = this.extractTitleFromDescription(feature.description);
 
     let prompt = `## Feature Implementation Task
@@ -1975,8 +1984,76 @@ You can use the Read tool to view these images at any time during implementation
     }
 
     // Add verification instructions based on testing mode
-    if (feature.skipTests) {
-      // Manual verification - just implement the feature
+    // Browser mode takes priority when enabled and configured
+    if (useBrowserMode && browserTestSettings) {
+      // Automated verification - implement and verify using agent-browser
+      const sessionName = `feature-${feature.id}`;
+      const baseUrl = browserTestSettings.url;
+      const loginPath = browserTestSettings.loginPath || '/auth/login';
+      const credentials = browserTestSettings.credentials;
+
+      prompt += `
+## Instructions
+
+Implement this feature using an iterative approach with visual verification:
+
+1. First, explore the codebase to understand the existing structure
+2. Plan your implementation approach
+3. Implement the changes in small, testable increments
+4. **After each significant change, use agent-browser to visually verify it works correctly**
+5. If something doesn't work as expected, fix it immediately before continuing
+6. Repeat until all requirements are satisfied
+
+## Browser Testing with agent-browser (REQUIRED)
+
+You have access to agent-browser for visual verification.
+- **Session name**: ${sessionName}
+- **Base URL**: ${baseUrl}
+- **Auth state file**: .automaker/browser-auth.json
+
+### First-time Setup (if auth state doesn't exist)
+Check if \`.automaker/browser-auth.json\` exists. If NOT:
+1. agent-browser --session ${sessionName} open ${baseUrl}${loginPath}
+2. agent-browser --session ${sessionName} snapshot -i
+3. Login with: email="${credentials?.email || 'test@example.com'}" password="${credentials?.password || 'password'}"
+4. agent-browser --session ${sessionName} state save .automaker/browser-auth.json
+
+### Normal Workflow
+1. agent-browser --session ${sessionName} state load .automaker/browser-auth.json
+2. agent-browser --session ${sessionName} open ${baseUrl}/{relevant-page}
+3. agent-browser --session ${sessionName} snapshot -i
+4. Verify changes visually, interact with elements
+5. agent-browser --session ${sessionName} close (when done)
+
+### Key Commands Reference
+- snapshot -i: Get interactive elements with refs (@e1, @e2)
+- click @e1: Click element by ref
+- fill @e2 "text": Fill input field
+- screenshot: Capture current state
+
+Do NOT consider a task complete until you have visually confirmed it works in the browser. Continue iterating on the implementation until the feature meets all requirements.
+
+When done, wrap your final summary in <summary> tags like this:
+
+<summary>
+## Summary: [Feature Title]
+
+### Changes Implemented
+- [List of changes made]
+
+### Files Modified
+- [List of files]
+
+### Verification Status
+- [Describe what was visually verified in browser]
+
+### Notes for Developer
+- [Any important notes]
+</summary>
+
+This helps parse your summary correctly in the output logs.`;
+    } else if (feature.skipTests) {
+      // Manual verification - just implement the feature (no automated tests)
       prompt += `
 ## Instructions
 
@@ -1996,51 +2073,6 @@ When done, wrap your final summary in <summary> tags like this:
 
 ### Files Modified
 - [List of files]
-
-### Notes for Developer
-- [Any important notes]
-</summary>
-
-This helps parse your summary correctly in the output logs.`;
-    } else if (useChromeMode) {
-      // Automated verification - implement and verify using Chrome
-      prompt += `
-## Instructions
-
-Implement this feature using an iterative approach with visual verification:
-
-1. First, explore the codebase to understand the existing structure
-2. Plan your implementation approach
-3. Implement the changes in small, testable increments
-4. **After each significant change, use Chrome to visually verify it works correctly**
-5. If something doesn't work as expected, fix it immediately before continuing
-6. Repeat until all requirements are satisfied
-
-## Verification with Chrome (REQUIRED)
-
-You have access to Chrome tools for visual verification. After implementing changes:
-
-1. **Navigate to the relevant page** in Chrome to see your changes
-2. **Visually inspect** that the UI looks correct and functions as expected
-3. **Interact with the feature** - click buttons, fill forms, trigger the functionality
-4. **Check for errors** in the console or unexpected behavior
-5. **If anything is wrong, fix it and re-verify** before moving on
-
-Do NOT consider a task complete until you have visually confirmed it works in Chrome. Continue iterating on the implementation until the feature meets all requirements.
-
-When done, wrap your final summary in <summary> tags like this:
-
-<summary>
-## Summary: [Feature Title]
-
-### Changes Implemented
-- [List of changes made]
-
-### Files Modified
-- [List of files]
-
-### Verification Status
-- [Describe what was visually verified in Chrome]
 
 ### Notes for Developer
 - [Any important notes]
@@ -2221,12 +2253,9 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
     );
 
     // Get provider for this model
-    const useChromeMode = options?.useChromeMode ?? true;
-    const provider = ProviderFactory.getProviderForModel(finalModel, { useChromeMode });
+    const provider = ProviderFactory.getProviderForModel(finalModel);
 
-    logger.info(
-      `Using provider "${provider.getName()}" for model "${finalModel}", useChromeMode: ${useChromeMode}`
-    );
+    logger.info(`Using provider "${provider.getName()}" for model "${finalModel}"`);
 
     // Build prompt content with images using utility
     const { content: promptContent } = await buildPromptWithImages(

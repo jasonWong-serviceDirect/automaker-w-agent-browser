@@ -78,7 +78,7 @@ export function useBoardActions({
     removeFeature,
     moveFeature,
     useWorktrees,
-    useChromeMode,
+    useBrowserMode,
     enableDependencyBlocking,
     isPrimaryWorktreeBranch,
     getPrimaryWorktreeBranch,
@@ -342,7 +342,7 @@ export function useBoardActions({
           feature.id,
           useWorktrees,
           undefined, // worktreePath - server derives from feature.branchName
-          useChromeMode
+          useBrowserMode
         );
 
         if (result.success) {
@@ -356,7 +356,7 @@ export function useBoardActions({
         await loadFeatures();
       }
     },
-    [currentProject, useWorktrees, useChromeMode, loadFeatures]
+    [currentProject, useWorktrees, useBrowserMode, loadFeatures]
   );
 
   const handleStartImplementation = useCallback(

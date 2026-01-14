@@ -452,7 +452,7 @@ export interface AppState {
   >;
   autoModeActivityLog: AutoModeActivity[];
   maxConcurrency: number; // Maximum number of concurrent agent tasks
-  useChromeMode: boolean; // Whether to use Chrome for visual verification
+  useBrowserMode: boolean; // Whether to use agent-browser for visual verification
 
   // Kanban Card Display Settings
   kanbanCardDetailLevel: KanbanCardDetailLevel; // Level of detail shown on kanban cards
@@ -742,7 +742,7 @@ export interface AppActions {
   addAutoModeActivity: (activity: Omit<AutoModeActivity, 'id' | 'timestamp'>) => void;
   clearAutoModeActivity: () => void;
   setMaxConcurrency: (max: number) => void;
-  setUseChromeMode: (value: boolean) => void;
+  setUseBrowserMode: (value: boolean) => void;
 
   // Kanban Card Settings actions
   setKanbanCardDetailLevel: (level: KanbanCardDetailLevel) => void;
@@ -1004,7 +1004,7 @@ const initialState: AppState = {
   autoModeByProject: {},
   autoModeActivityLog: [],
   maxConcurrency: 3, // Default to 3 concurrent agents
-  useChromeMode: true, // Default to Chrome mode enabled
+  useBrowserMode: false, // Default to browser mode disabled (requires browserTest settings)
   kanbanCardDetailLevel: 'standard', // Default to standard detail level
   boardViewMode: 'kanban', // Default to kanban view
   defaultSkipTests: true, // Default to manual verification (tests disabled)
@@ -1570,11 +1570,10 @@ export const useAppStore = create<AppState & AppActions>()(
 
       setMaxConcurrency: (max) => {
         set({ maxConcurrency: max });
-        if (max > 1) {
-          set({ useChromeMode: false });
-        }
+        // No longer auto-disable browser mode for high concurrency
+        // agent-browser uses named sessions enabling parallel feature testing
       },
-      setUseChromeMode: (value) => set({ useChromeMode: value }),
+      setUseBrowserMode: (value) => set({ useBrowserMode: value }),
 
       // Kanban Card Settings actions
       setKanbanCardDetailLevel: (level) => set({ kanbanCardDetailLevel: level }),
@@ -3000,7 +2999,7 @@ export const useAppStore = create<AppState & AppActions>()(
           // Settings
           apiKeys: state.apiKeys,
           maxConcurrency: state.maxConcurrency,
-          useChromeMode: state.useChromeMode,
+          useBrowserMode: state.useBrowserMode,
           // Note: autoModeByProject is intentionally NOT persisted
           // Auto-mode should always default to OFF on app refresh
           defaultSkipTests: state.defaultSkipTests,

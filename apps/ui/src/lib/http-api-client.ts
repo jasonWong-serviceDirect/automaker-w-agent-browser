@@ -1233,14 +1233,14 @@ export class HttpApiClient implements ElectronAPI {
       featureId: string,
       useWorktrees?: boolean,
       worktreePath?: string,
-      useChromeMode?: boolean
+      useBrowserMode?: boolean
     ) =>
       this.post('/api/auto-mode/run-feature', {
         projectPath,
         featureId,
         useWorktrees,
         worktreePath,
-        useChromeMode,
+        useChromeMode: useBrowserMode, // API still uses useChromeMode for backwards compatibility
       }),
     verifyFeature: (projectPath: string, featureId: string) =>
       this.post('/api/auto-mode/verify-feature', { projectPath, featureId }),

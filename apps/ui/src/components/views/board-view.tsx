@@ -72,8 +72,8 @@ export function BoardView() {
     currentProject,
     maxConcurrency,
     setMaxConcurrency,
-    useChromeMode,
-    setUseChromeMode,
+    useBrowserMode,
+    setUseBrowserMode,
     defaultSkipTests,
     showProfilesOnly,
     aiProfiles,
@@ -1126,8 +1126,8 @@ export function BoardView() {
             autoMode.stop();
           }
         }}
-        useChromeMode={useChromeMode}
-        onChromeModeToggle={setUseChromeMode}
+        useBrowserMode={useBrowserMode}
+        onBrowserModeToggle={setUseBrowserMode}
         onAddFeature={() => setShowAddDialog(true)}
         onOpenPlanDialog={() => setShowPlanDialog(true)}
         onOpenModifyDialog={() => setShowModifyDialog(true)}
