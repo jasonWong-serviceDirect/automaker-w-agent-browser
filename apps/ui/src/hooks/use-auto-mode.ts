@@ -316,6 +316,36 @@ export function useAutoMode() {
             });
           }
           break;
+
+        case 'feature_interrupted':
+          // Feature was interrupted by user - move to interrupted state
+          if (event.featureId) {
+            logger.info(`Feature interrupted: ${event.featureId}`);
+            if (eventProjectId) {
+              removeRunningTask(eventProjectId, event.featureId);
+            }
+            addAutoModeActivity({
+              featureId: event.featureId,
+              type: 'progress',
+              message: 'Feature paused - awaiting user input',
+            });
+          }
+          break;
+
+        case 'feature_resumed':
+          // Feature resumed from interrupted state
+          if (event.featureId) {
+            logger.info(`Feature resumed: ${event.featureId}`);
+            if (eventProjectId) {
+              addRunningTask(eventProjectId, event.featureId);
+            }
+            addAutoModeActivity({
+              featureId: event.featureId,
+              type: 'progress',
+              message: 'Feature resumed with user input',
+            });
+          }
+          break;
       }
     });
 
@@ -393,6 +423,88 @@ export function useAutoMode() {
     [currentProject, removeRunningTask, addAutoModeActivity]
   );
 
+  // Interrupt a running feature (preserves session for continuation)
+  const interruptFeature = useCallback(
+    async (featureId: string) => {
+      if (!currentProject) {
+        logger.error('No project selected');
+        return { success: false };
+      }
+
+      try {
+        const api = getElectronAPI();
+        if (!api?.autoMode?.interruptFeature) {
+          throw new Error('Interrupt feature API not available');
+        }
+
+        const result = await api.autoMode.interruptFeature(featureId);
+
+        if (result.success) {
+          // Don't remove from running tasks yet - the feature_interrupted event will handle that
+          logger.info(
+            'Feature interrupted successfully:',
+            featureId,
+            'session:',
+            result.sdkSessionId
+          );
+          addAutoModeActivity({
+            featureId,
+            type: 'progress',
+            message: 'Feature interrupted - waiting for user input',
+          });
+          return { success: true, sdkSessionId: result.sdkSessionId };
+        } else {
+          logger.error('Failed to interrupt feature:', result.error);
+          throw new Error(result.error || 'Failed to interrupt feature');
+        }
+      } catch (error) {
+        logger.error('Error interrupting feature:', error);
+        throw error;
+      }
+    },
+    [currentProject, addAutoModeActivity]
+  );
+
+  // Continue an interrupted feature with user input
+  const continueFeature = useCallback(
+    async (featureId: string, message: string, imagePaths?: string[]) => {
+      if (!currentProject) {
+        logger.error('No project selected');
+        return;
+      }
+
+      try {
+        const api = getElectronAPI();
+        if (!api?.autoMode?.continueFeature) {
+          throw new Error('Continue feature API not available');
+        }
+
+        const result = await api.autoMode.continueFeature(
+          currentProject.path,
+          featureId,
+          message,
+          imagePaths
+        );
+
+        if (result.success) {
+          logger.info('Feature continuation started:', featureId);
+          addAutoModeActivity({
+            featureId,
+            type: 'progress',
+            message: 'Continuing feature with user input...',
+          });
+        } else {
+          logger.error('Failed to continue feature:', result.error);
+          throw new Error(result.error || 'Failed to continue feature');
+        }
+      } catch (error) {
+        logger.error('Error continuing feature:', error);
+        throw error;
+      }
+    },
+    [currentProject, addAutoModeActivity]
+  );
+
   return {
     isRunning: isAutoModeRunning,
     runningTasks: runningAutoTasks,
@@ -401,5 +513,7 @@ export function useAutoMode() {
     start,
     stop,
     stopFeature,
+    interruptFeature,
+    continueFeature,
   };
 }

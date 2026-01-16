@@ -76,6 +76,7 @@ export interface ExecuteOptions {
   abortController?: AbortController;
   conversationHistory?: ConversationMessage[]; // Previous messages for context
   sdkSessionId?: string; // Claude SDK session ID for resuming conversations
+  resume?: string; // SDK session ID to resume from (for interrupted features)
   settingSources?: Array<'user' | 'project' | 'local'>; // Sources for CLAUDE.md loading
   sandbox?: { enabled: boolean; autoAllowBashIfSandboxed?: boolean }; // Sandbox configuration
   /**

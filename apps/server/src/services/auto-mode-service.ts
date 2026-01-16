@@ -184,6 +184,20 @@ interface RunningFeature {
   startTime: number;
   model?: string;
   provider?: ModelProvider;
+  sdkSessionId?: string; // Capture from SDK for resumption
+  workDir?: string; // Working directory for resume
+}
+
+interface InterruptedFeature {
+  featureId: string;
+  projectPath: string;
+  worktreePath: string | null;
+  branchName: string | null;
+  sdkSessionId: string;
+  workDir: string;
+  model?: string;
+  provider?: ModelProvider;
+  interruptedAt: number;
 }
 
 interface AutoLoopState {
@@ -213,6 +227,7 @@ const FAILURE_WINDOW_MS = 60000; // Failures within 1 minute count as consecutiv
 export class AutoModeService {
   private events: EventEmitter;
   private runningFeatures = new Map<string, RunningFeature>();
+  private interruptedFeatures = new Map<string, InterruptedFeature>();
   private autoLoop: AutoLoopState | null = null;
   private featureLoader = new FeatureLoader();
   private autoLoopRunning = false;
@@ -833,6 +848,167 @@ Complete the pipeline step instructions above. Review the previous work and appl
     this.runningFeatures.delete(featureId);
 
     return true;
+  }
+
+  /**
+   * Interrupt a running feature and save state for continuation.
+   * Unlike stopFeature, this preserves the SDK session for resumption.
+   */
+  async interruptFeature(featureId: string): Promise<{ success: boolean; sdkSessionId?: string }> {
+    const running = this.runningFeatures.get(featureId);
+    if (!running) {
+      return { success: false };
+    }
+
+    // Check if we have a session ID to resume from
+    if (!running.sdkSessionId || !running.workDir) {
+      logger.warn(`Cannot interrupt feature ${featureId}: no SDK session ID captured yet`);
+      // Fall back to regular stop
+      await this.stopFeature(featureId);
+      return { success: true };
+    }
+
+    // Save to interrupted features map
+    this.interruptedFeatures.set(featureId, {
+      featureId: running.featureId,
+      projectPath: running.projectPath,
+      worktreePath: running.worktreePath,
+      branchName: running.branchName,
+      sdkSessionId: running.sdkSessionId,
+      workDir: running.workDir,
+      model: running.model,
+      provider: running.provider,
+      interruptedAt: Date.now(),
+    });
+
+    // Cancel any pending plan approval
+    this.cancelPlanApproval(featureId);
+
+    // Abort the current execution
+    running.abortController.abort();
+
+    // Remove from running features
+    this.runningFeatures.delete(featureId);
+
+    // Emit interrupted event
+    this.emitAutoModeEvent('feature_interrupted', {
+      featureId,
+      projectPath: running.projectPath,
+      sdkSessionId: running.sdkSessionId,
+    });
+
+    logger.info(`Feature ${featureId} interrupted with session ${running.sdkSessionId}`);
+
+    return { success: true, sdkSessionId: running.sdkSessionId };
+  }
+
+  /**
+   * Continue an interrupted feature with user input.
+   * Uses the SDK session resumption to continue from where the agent left off.
+   */
+  async continueFeature(
+    projectPath: string,
+    featureId: string,
+    userMessage: string,
+    imagePaths?: string[]
+  ): Promise<void> {
+    // Check if feature is in interrupted state
+    const interrupted = this.interruptedFeatures.get(featureId);
+    if (!interrupted) {
+      throw new Error(`Feature ${featureId} is not in interrupted state`);
+    }
+
+    if (this.runningFeatures.has(featureId)) {
+      throw new Error(`Feature ${featureId} is already running`);
+    }
+
+    logger.info(`Continuing feature ${featureId} with session ${interrupted.sdkSessionId}`);
+
+    // Create new abort controller for the continued execution
+    const abortController = new AbortController();
+
+    // Add back to running features
+    this.runningFeatures.set(featureId, {
+      featureId,
+      projectPath: interrupted.projectPath,
+      worktreePath: interrupted.worktreePath,
+      branchName: interrupted.branchName,
+      abortController,
+      isAutoMode: false, // User-initiated continuation
+      startTime: Date.now(),
+      model: interrupted.model,
+      provider: interrupted.provider,
+      sdkSessionId: interrupted.sdkSessionId,
+      workDir: interrupted.workDir,
+    });
+
+    // Remove from interrupted map
+    this.interruptedFeatures.delete(featureId);
+
+    // Emit resumed event
+    this.emitAutoModeEvent('feature_resumed', {
+      featureId,
+      projectPath: interrupted.projectPath,
+    });
+
+    try {
+      // Use the existing runAgent method with resume option
+      // The SDK supports resumption via the resume parameter
+      await this.runAgentWithResume(
+        interrupted.workDir,
+        featureId,
+        userMessage,
+        abortController,
+        interrupted.projectPath,
+        interrupted.sdkSessionId,
+        imagePaths,
+        interrupted.model
+      );
+
+      // On success, emit completion event
+      this.emitAutoModeEvent('auto_mode_feature_complete', {
+        featureId,
+        projectPath: interrupted.projectPath,
+        passes: true,
+        message: 'Feature continued successfully',
+      });
+    } catch (error) {
+      // Handle errors similar to executeFeature
+      if (isAbortError(error)) {
+        this.emitAutoModeEvent('auto_mode_error', {
+          featureId,
+          projectPath: interrupted.projectPath,
+          error: 'Feature continuation aborted',
+          errorType: 'abort',
+        });
+      } else {
+        const errorInfo = classifyError(error);
+        this.emitAutoModeEvent('auto_mode_error', {
+          featureId,
+          projectPath: interrupted.projectPath,
+          error: errorInfo.message,
+          errorType: errorInfo.type as 'authentication' | 'execution',
+        });
+      }
+      throw error;
+    } finally {
+      // Always remove from running features when done
+      this.runningFeatures.delete(featureId);
+    }
+  }
+
+  /**
+   * Get the interrupted state for a feature
+   */
+  getInterruptedFeature(featureId: string): InterruptedFeature | undefined {
+    return this.interruptedFeatures.get(featureId);
+  }
+
+  /**
+   * Check if a feature is in interrupted state
+   */
+  isFeatureInterrupted(featureId: string): boolean {
+    return this.interruptedFeatures.has(featureId);
   }
 
   /**
@@ -2354,6 +2530,19 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
         // Log raw stream event for debugging
         appendRawEvent(msg);
 
+        // Capture SDK session ID from any message for potential resumption
+        const msgWithSession = msg as { session_id?: string };
+        if (msgWithSession.session_id) {
+          const running = this.runningFeatures.get(featureId);
+          if (running && !running.sdkSessionId) {
+            running.sdkSessionId = msgWithSession.session_id;
+            running.workDir = workDir;
+            logger.info(
+              `Captured SDK session ID for feature ${featureId}: ${msgWithSession.session_id}`
+            );
+          }
+        }
+
         logger.info(`Stream message received:`, msg.type, msg.subtype || '');
         if (msg.type === 'assistant' && msg.message?.content) {
           for (const block of msg.message.content) {
@@ -2994,6 +3183,132 @@ Begin implementing task ${task.id} now.`;
       type: eventType,
       ...data,
     });
+  }
+
+  /**
+   * Run agent with SDK session resumption.
+   * This method is used to continue an interrupted feature execution.
+   */
+  private async runAgentWithResume(
+    workDir: string,
+    featureId: string,
+    userMessage: string,
+    abortController: AbortController,
+    projectPath: string,
+    sdkSessionId: string,
+    imagePaths?: string[],
+    model?: string
+  ): Promise<void> {
+    logger.info(`Running agent with resume for feature ${featureId}, session ${sdkSessionId}`);
+
+    // Load settings
+    const autoLoadClaudeMd = await getAutoLoadClaudeMdSetting(
+      projectPath,
+      this.settingsService,
+      '[AutoMode]'
+    );
+    const enableSandboxMode = await getEnableSandboxModeSetting(this.settingsService, '[AutoMode]');
+    const mcpServers = await getMCPServersFromSettings(this.settingsService, '[AutoMode]');
+
+    // Build SDK options
+    const sdkOptions = createAutoModeOptions({
+      cwd: workDir,
+      model: model,
+      abortController,
+      autoLoadClaudeMd,
+      enableSandboxMode,
+      mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined,
+    });
+
+    const finalModel = sdkOptions.model!;
+    const maxTurns = sdkOptions.maxTurns;
+    const allowedTools = sdkOptions.allowedTools as string[] | undefined;
+
+    // Get provider for this model
+    const provider = ProviderFactory.getProviderForModel(finalModel);
+
+    // Build prompt content with images
+    const { content: promptContent } = await buildPromptWithImages(
+      userMessage,
+      imagePaths,
+      workDir,
+      false
+    );
+
+    // Execute with resume parameter
+    const executeOptions: ExecuteOptions = {
+      prompt: promptContent,
+      model: finalModel,
+      maxTurns: maxTurns,
+      cwd: workDir,
+      allowedTools: allowedTools,
+      abortController,
+      systemPrompt: sdkOptions.systemPrompt,
+      settingSources: sdkOptions.settingSources,
+      sandbox: sdkOptions.sandbox,
+      mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined,
+      resume: sdkSessionId, // Resume from the previous session
+    };
+
+    logger.info(`Starting resumed stream for feature ${featureId}...`);
+    const stream = provider.executeQuery(executeOptions);
+
+    // Agent output file paths
+    const featureDirForOutput = getFeatureDir(projectPath, featureId);
+    const outputPath = path.join(featureDirForOutput, 'agent-output.md');
+
+    // Load existing content if any
+    let responseText = '';
+    try {
+      responseText = (await secureFs.readFile(outputPath, 'utf-8')) as string;
+      responseText += '\n\n---\n\n## Continued Session (User Input)\n\n';
+      responseText += `**User:** ${userMessage}\n\n`;
+    } catch {
+      responseText = `## Continued Session\n\n**User:** ${userMessage}\n\n`;
+    }
+
+    // Process stream
+    for await (const msg of stream) {
+      // Update session ID if a new one is provided
+      const msgWithSession = msg as { session_id?: string };
+      if (msgWithSession.session_id) {
+        const running = this.runningFeatures.get(featureId);
+        if (running) {
+          running.sdkSessionId = msgWithSession.session_id;
+        }
+      }
+
+      if (msg.type === 'assistant' && msg.message?.content) {
+        for (const block of msg.message.content) {
+          if (block.type === 'text') {
+            responseText += block.text || '';
+            this.emitAutoModeEvent('auto_mode_progress', {
+              featureId,
+              content: block.text,
+            });
+          } else if (block.type === 'tool_use') {
+            this.emitAutoModeEvent('auto_mode_tool', {
+              featureId,
+              tool: block.name,
+              input: block.input,
+            });
+            responseText += `\n🔧 Tool: ${block.name}\n`;
+            if (block.input) {
+              responseText += `Input: ${JSON.stringify(block.input, null, 2)}\n`;
+            }
+          }
+        }
+      } else if (msg.type === 'error') {
+        throw new Error(msg.error || 'Unknown error during resumed execution');
+      } else if (msg.type === 'result' && msg.subtype === 'success') {
+        // Final result
+        logger.info(`Resumed execution completed for feature ${featureId}`);
+      }
+    }
+
+    // Save final output
+    await secureFs.mkdir(path.dirname(outputPath), { recursive: true });
+    await secureFs.writeFile(outputPath, responseText);
   }
 
   private sleep(ms: number, signal?: AbortSignal): Promise<void> {

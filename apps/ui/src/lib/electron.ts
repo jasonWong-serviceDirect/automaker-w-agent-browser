@@ -480,6 +480,17 @@ export interface AutoModeAPI {
     projectPath: string
   ) => Promise<{ success: boolean; error?: string; runningFeatures?: number }>;
   stopFeature: (featureId: string) => Promise<{ success: boolean; error?: string }>;
+  interruptFeature: (featureId: string) => Promise<{
+    success: boolean;
+    sdkSessionId?: string;
+    error?: string;
+  }>;
+  continueFeature: (
+    projectPath: string,
+    featureId: string,
+    message: string,
+    imagePaths?: string[]
+  ) => Promise<{ success: boolean; error?: string }>;
   status: (projectPath?: string) => Promise<{
     success: boolean;
     isRunning?: boolean;

@@ -32,6 +32,7 @@ interface KanbanBoardProps {
   onVerify: (feature: Feature) => void;
   onResume: (feature: Feature) => void;
   onForceStop: (feature: Feature) => void;
+  onInterrupt: (feature: Feature) => void;
   onManualVerify: (feature: Feature) => void;
   onMoveBackToInProgress: (feature: Feature) => void;
   onFollowUp: (feature: Feature) => void;
@@ -67,6 +68,7 @@ export function KanbanBoard({
   onVerify,
   onResume,
   onForceStop,
+  onInterrupt,
   onManualVerify,
   onMoveBackToInProgress,
   onFollowUp,
@@ -192,6 +194,7 @@ export function KanbanBoard({
                         onVerify={() => onVerify(feature)}
                         onResume={() => onResume(feature)}
                         onForceStop={() => onForceStop(feature)}
+                        onInterrupt={() => onInterrupt(feature)}
                         onManualVerify={() => onManualVerify(feature)}
                         onMoveBackToInProgress={() => onMoveBackToInProgress(feature)}
                         onFollowUp={() => onFollowUp(feature)}

@@ -758,6 +758,44 @@ export function useBoardActions({
     [autoMode, moveFeature, persistFeatureUpdate]
   );
 
+  const handleInterruptFeature = useCallback(
+    async (feature: Feature): Promise<{ success: boolean; sdkSessionId?: string }> => {
+      try {
+        const result = await autoMode.interruptFeature(feature.id);
+        if (result.success) {
+          toast.info('Feature paused', {
+            description: `Paused: ${truncateDescription(feature.description)}. Provide input to continue.`,
+          });
+        }
+        return result;
+      } catch (error) {
+        logger.error('Error interrupting feature:', error);
+        toast.error('Failed to pause agent', {
+          description: error instanceof Error ? error.message : 'An error occurred',
+        });
+        return { success: false };
+      }
+    },
+    [autoMode]
+  );
+
+  const handleContinueFeature = useCallback(
+    async (feature: Feature, message: string, imagePaths?: string[]) => {
+      try {
+        await autoMode.continueFeature(feature.id, message, imagePaths);
+        toast.success('Feature resumed', {
+          description: `Continuing: ${truncateDescription(feature.description)}`,
+        });
+      } catch (error) {
+        logger.error('Error continuing feature:', error);
+        toast.error('Failed to continue feature', {
+          description: error instanceof Error ? error.message : 'An error occurred',
+        });
+      }
+    },
+    [autoMode]
+  );
+
   const handleStartNextFeatures = useCallback(async () => {
     // Filter backlog features by the currently selected worktree branch
     // This ensures "G" only starts features from the filtered list
@@ -893,6 +931,8 @@ export function useBoardActions({
     handleViewOutput,
     handleOutputModalNumberKeyPress,
     handleForceStopFeature,
+    handleInterruptFeature,
+    handleContinueFeature,
     handleStartNextFeatures,
     handleArchiveAllVerified,
   };

@@ -38,6 +38,7 @@ import {
   FollowUpDialog,
   PlanApprovalDialog,
 } from './board-view/dialogs';
+import { InterruptDialog } from './board-view/dialogs/interrupt-dialog';
 import { PipelineSettingsDialog } from './board-view/dialogs/pipeline-settings-dialog';
 import { CreateWorktreeDialog } from './board-view/dialogs/create-worktree-dialog';
 import { DeleteWorktreeDialog } from './board-view/dialogs/delete-worktree-dialog';
@@ -118,6 +119,11 @@ export function BoardView() {
   const [deleteCompletedFeature, setDeleteCompletedFeature] = useState<Feature | null>(null);
   // State for viewing plan in read-only mode
   const [viewPlanFeature, setViewPlanFeature] = useState<Feature | null>(null);
+
+  // State for interrupt dialog
+  const [showInterruptDialog, setShowInterruptDialog] = useState(false);
+  const [interruptFeature, setInterruptFeature] = useState<Feature | null>(null);
+  const [isInterrupting, setIsInterrupting] = useState(false);
 
   // State for spawn task mode
   const [spawnParentFeature, setSpawnParentFeature] = useState<Feature | null>(null);
@@ -422,6 +428,8 @@ export function BoardView() {
     handleViewOutput,
     handleOutputModalNumberKeyPress,
     handleForceStopFeature,
+    handleInterruptFeature,
+    handleContinueFeature,
     handleStartNextFeatures,
     handleArchiveAllVerified,
   } = useBoardActions({
@@ -470,6 +478,51 @@ export function BoardView() {
     },
     currentWorktreeBranch,
   });
+
+  // Handler for opening interrupt dialog
+  const handleOpenInterruptDialog = useCallback(
+    async (feature: Feature) => {
+      setInterruptFeature(feature);
+      setShowInterruptDialog(true);
+      setIsInterrupting(true);
+
+      try {
+        const result = await handleInterruptFeature(feature);
+        if (result.success) {
+          setIsInterrupting(false);
+        } else {
+          // If interrupt fails, close the dialog
+          setShowInterruptDialog(false);
+          setInterruptFeature(null);
+          setIsInterrupting(false);
+        }
+      } catch (_error) {
+        setShowInterruptDialog(false);
+        setInterruptFeature(null);
+        setIsInterrupting(false);
+      }
+    },
+    [handleInterruptFeature]
+  );
+
+  // Handler for continuing an interrupted feature
+  const handleContinueInterruptedFeature = useCallback(
+    async (message: string, imagePaths?: string[]) => {
+      if (!interruptFeature) return;
+      await handleContinueFeature(interruptFeature, message, imagePaths);
+      setShowInterruptDialog(false);
+      setInterruptFeature(null);
+    },
+    [interruptFeature, handleContinueFeature]
+  );
+
+  // Handler for stopping an interrupted feature
+  const handleStopInterruptedFeature = useCallback(async () => {
+    if (!interruptFeature) return;
+    await handleForceStopFeature(interruptFeature);
+    setShowInterruptDialog(false);
+    setInterruptFeature(null);
+  }, [interruptFeature, handleForceStopFeature]);
 
   // Handler for bulk updating multiple features
   const handleBulkUpdate = useCallback(
@@ -1212,6 +1265,7 @@ export function BoardView() {
             onVerify={handleVerifyFeature}
             onResume={handleResumeFeature}
             onForceStop={handleForceStopFeature}
+            onInterrupt={handleOpenInterruptDialog}
             onManualVerify={handleManualVerify}
             onMoveBackToInProgress={handleMoveBackToInProgress}
             onFollowUp={handleOpenFollowUp}
@@ -1395,6 +1449,17 @@ export function BoardView() {
         onImagePathsChange={setFollowUpImagePaths}
         onPreviewMapChange={setFollowUpPreviewMap}
         onSend={handleSendFollowUp}
+        isMaximized={isMaximized}
+      />
+
+      {/* Interrupt Dialog */}
+      <InterruptDialog
+        open={showInterruptDialog}
+        onOpenChange={setShowInterruptDialog}
+        feature={interruptFeature}
+        isInterrupting={isInterrupting}
+        onContinue={handleContinueInterruptedFeature}
+        onStop={handleStopInterruptedFeature}
         isMaximized={isMaximized}
       />
 

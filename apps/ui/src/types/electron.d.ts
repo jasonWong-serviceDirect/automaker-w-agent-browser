@@ -298,6 +298,17 @@ export type AutoModeEvent =
       featureId: string;
       projectPath?: string;
       phaseNumber: number;
+    }
+  | {
+      type: 'feature_interrupted';
+      featureId: string;
+      projectPath?: string;
+      sdkSessionId?: string;
+    }
+  | {
+      type: 'feature_resumed';
+      featureId: string;
+      projectPath?: string;
     };
 
 export type SpecRegenerationEvent =
@@ -371,6 +382,22 @@ export interface SpecRegenerationAPI {
 
 export interface AutoModeAPI {
   stopFeature: (featureId: string) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+
+  interruptFeature: (featureId: string) => Promise<{
+    success: boolean;
+    sdkSessionId?: string;
+    error?: string;
+  }>;
+
+  continueFeature: (
+    projectPath: string,
+    featureId: string,
+    message: string,
+    imagePaths?: string[]
+  ) => Promise<{
     success: boolean;
     error?: string;
   }>;

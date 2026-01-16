@@ -17,6 +17,8 @@ import { createAnalyzeProjectHandler } from './routes/analyze-project.js';
 import { createFollowUpFeatureHandler } from './routes/follow-up-feature.js';
 import { createCommitFeatureHandler } from './routes/commit-feature.js';
 import { createApprovePlanHandler } from './routes/approve-plan.js';
+import { createInterruptFeatureHandler } from './routes/interrupt-feature.js';
+import { createContinueFeatureHandler } from './routes/continue-feature.js';
 
 export function createAutoModeRoutes(autoModeService: AutoModeService): Router {
   const router = Router();
@@ -62,6 +64,12 @@ export function createAutoModeRoutes(autoModeService: AutoModeService): Router {
     '/approve-plan',
     validatePathParams('projectPath'),
     createApprovePlanHandler(autoModeService)
+  );
+  router.post('/interrupt-feature', createInterruptFeatureHandler(autoModeService));
+  router.post(
+    '/continue-feature',
+    validatePathParams('projectPath', 'imagePaths[]'),
+    createContinueFeatureHandler(autoModeService)
   );
 
   return router;

@@ -10,6 +10,7 @@ import {
   Eye,
   Wand2,
   Archive,
+  PauseCircle,
 } from 'lucide-react';
 
 interface CardActionsProps {
@@ -23,6 +24,7 @@ interface CardActionsProps {
   onVerify?: () => void;
   onResume?: () => void;
   onForceStop?: () => void;
+  onInterrupt?: () => void;
   onManualVerify?: () => void;
   onFollowUp?: () => void;
   onImplement?: () => void;
@@ -42,6 +44,7 @@ export function CardActions({
   onVerify,
   onResume,
   onForceStop,
+  onInterrupt,
   onManualVerify,
   onFollowUp,
   onImplement,
@@ -97,6 +100,22 @@ export function CardActions({
                   {shortcutKey}
                 </span>
               )}
+            </Button>
+          )}
+          {onInterrupt && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] px-2 shrink-0 border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950"
+              onClick={(e) => {
+                e.stopPropagation();
+                onInterrupt();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              data-testid={`interrupt-${feature.id}`}
+              title="Pause and provide input"
+            >
+              <PauseCircle className="w-3 h-3" />
             </Button>
           )}
           {onForceStop && (

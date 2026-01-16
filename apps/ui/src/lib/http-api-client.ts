@@ -1227,6 +1227,20 @@ export class HttpApiClient implements ElectronAPI {
       this.post('/api/auto-mode/start', { projectPath, maxConcurrency }),
     stop: (projectPath: string) => this.post('/api/auto-mode/stop', { projectPath }),
     stopFeature: (featureId: string) => this.post('/api/auto-mode/stop-feature', { featureId }),
+    interruptFeature: (featureId: string) =>
+      this.post('/api/auto-mode/interrupt-feature', { featureId }),
+    continueFeature: (
+      projectPath: string,
+      featureId: string,
+      message: string,
+      imagePaths?: string[]
+    ) =>
+      this.post('/api/auto-mode/continue-feature', {
+        projectPath,
+        featureId,
+        message,
+        imagePaths,
+      }),
     status: (projectPath?: string) => this.post('/api/auto-mode/status', { projectPath }),
     runFeature: (
       projectPath: string,
