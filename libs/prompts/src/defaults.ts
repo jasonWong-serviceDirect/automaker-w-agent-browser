@@ -33,15 +33,8 @@ Create a brief planning outline:
 1. **Goal**: What are we accomplishing? (1 sentence)
 2. **Approach**: How will we do it? (2-3 sentences)
 3. **Files to Touch**: List files and what changes
-4. **Tasks**: Numbered task list (3-7 items) - implementation tasks only, NO testing tasks
+4. **Tasks**: Numbered task list (3-7 items) - include testing tasks if appropriate for verification
 5. **Risks**: Any gotchas to watch for
-
-**IMPORTANT**: Do NOT include Playwright tests, E2E tests, unit tests, or visual QA tasks. Verification happens during implementation using agent-browser.
-
-**Iterative Execution:**
-- For UI work: Use \`agent-browser\` commands for ALL browser interactions. Do NOT reference "Chrome" - use agent-browser commands like \`agent-browser open URL\`, \`agent-browser snapshot\`, etc.
-- For non-UI work: Use TDD - write failing tests first, iterate until they pass
-
 After generating the outline, output:
 "[PLAN_GENERATED] Planning outline complete."
 
@@ -57,14 +50,13 @@ Create a brief planning outline:
 1. **Goal**: What are we accomplishing? (1 sentence)
 2. **Approach**: How will we do it? (2-3 sentences)
 3. **Files to Touch**: List files and what changes
-4. **Tasks**: Numbered task list (3-7 items) - implementation tasks only, NO testing tasks
+4. **Tasks**: Numbered task list (3-7 items) - include testing tasks if appropriate for verification
 5. **Risks**: Any gotchas to watch for
 
-**IMPORTANT**: Do NOT include Playwright tests, E2E tests, unit tests, or visual QA tasks. Verification happens during implementation using agent-browser.
-
 **Iterative Execution:**
-- For UI work: Use \`agent-browser\` commands for ALL browser interactions. Do NOT reference "Chrome" - use agent-browser commands like \`agent-browser open URL\`, \`agent-browser snapshot\`, etc.
-- For non-UI work: Use TDD - write failing tests first, iterate until they pass
+- For UI work requiring visual confirmation: Use \`agent-browser\` commands (e.g., \`agent-browser open URL\`, \`agent-browser snapshot\`)
+- For non-UI work or testable behavior: Use TDD - write failing tests first, iterate until they pass
+- Write Playwright tests, unit tests, or E2E tests as needed for verification
 
 After generating the outline, output:
 "[SPEC_GENERATED] Please review the planning outline above. Reply with 'approved' to proceed or provide feedback for revisions."
@@ -105,12 +97,9 @@ Generate a specification with an actionable task breakdown. WAIT for approval be
    - Description: Clear action (e.g., "Create user model", "Add API endpoint")
    - File: Primary file affected (helps with context)
    - Order by dependencies (foundational tasks first)
+   - Include testing tasks if appropriate for verification (Playwright, unit tests, E2E)
 
-   **IMPORTANT - No Testing Tasks**:
-   Do NOT create tasks for Playwright tests, E2E tests, unit tests, visual QA, or any automated testing.
-   Verification happens during implementation using agent-browser - each task verifies its own work visually.
-
-6. **Verification**: How to confirm feature works (manual verification steps, NOT automated tests)
+6. **Verification**: How to confirm feature works (tests, visual confirmation, or both)
 
 After generating the spec, output on its own line:
 "[SPEC_GENERATED] Please review the specification above. Reply with 'approved' to proceed or provide feedback for revisions."
@@ -118,8 +107,9 @@ After generating the spec, output on its own line:
 DO NOT proceed with implementation until you receive explicit approval.
 
 **Iterative Execution:**
-- For UI work: Use \`agent-browser\` commands for ALL browser interactions. Do NOT reference "Chrome" - use agent-browser commands like \`agent-browser open URL\`, \`agent-browser snapshot\`, etc.
-- For non-UI work: Use TDD - write failing tests first, iterate until they pass
+- For UI work requiring visual confirmation: Use \`agent-browser\` commands (e.g., \`agent-browser open URL\`, \`agent-browser snapshot\`)
+- For non-UI work or testable behavior: Use TDD - write failing tests first, iterate until they pass
+- Write Playwright tests, unit tests, or E2E tests as needed for verification
 
 When approved, execute tasks SEQUENTIALLY in order. For each task:
 1. BEFORE starting, output: "[TASK_START] T###: Description"
@@ -174,11 +164,7 @@ Generate a comprehensive specification with phased task breakdown. WAIT for appr
    - File: Primary file affected
    - Order by dependencies within each phase
    - Phase structure helps organize complex work
-
-   **IMPORTANT - No Testing Tasks**:
-   Do NOT create tasks for Playwright tests, E2E tests, unit tests, visual QA, or any automated testing.
-   Verification happens during implementation using agent-browser - each task should verify its own work visually before completing.
-   Do NOT add testing phases, testing setup tasks, or test file creation tasks.
+   - Include testing tasks/phases if appropriate for verification (Playwright, unit tests, E2E)
 
 7. **Success Metrics**: How we know it's done (measurable criteria)
 
@@ -193,8 +179,9 @@ After generating the spec, output on its own line:
 DO NOT proceed with implementation until you receive explicit approval.
 
 **Iterative Execution:**
-- For UI work: Use \`agent-browser\` commands for ALL browser interactions. Do NOT reference "Chrome" - use agent-browser commands like \`agent-browser open URL\`, \`agent-browser snapshot\`, etc.
-- For non-UI work: Use TDD - write failing tests first, iterate until they pass
+- For UI work requiring visual confirmation: Use \`agent-browser\` commands (e.g., \`agent-browser open URL\`, \`agent-browser snapshot\`)
+- For non-UI work or testable behavior: Use TDD - write failing tests first, iterate until they pass
+- Write Playwright tests, unit tests, or E2E tests as needed for verification
 
 When approved, execute tasks SEQUENTIALLY by phase. For each task:
 1. BEFORE starting, output: "[TASK_START] T###: Description"
@@ -408,14 +395,14 @@ Important rules:
 - Provide clear, actionable descriptions
 - Maintain category consistency (feature, bug, enhancement, refactor)
 - When adding dependencies, ensure the referenced features exist or are being added in the same plan
-- **CRITICAL**: Do NOT create features for Playwright tests, E2E tests, unit tests, visual QA, accessibility testing, or any automated testing. Verification happens during implementation using agent-browser - testing is NOT a separate feature.
 - **IMPORTANT**: Break into multiple features that can be worked on in parallel as much as possible
 
-**CRITICAL - Iterative Execution:**
+**Iterative Execution:**
 All feature descriptions MUST include:
 1. A clear iterative process specific to the task with defined success criteria
-2. For UI work: Use \`agent-browser\` commands for ALL browser interactions (opening pages, taking screenshots, clicking, verifying). Do NOT reference "Chrome" or any browser by name - always use agent-browser commands like \`agent-browser open URL\`, \`agent-browser snapshot\`, etc.
-3. For non-UI work: Use test-driven development (write failing tests first, iterate until they pass)
+2. For UI work requiring visual confirmation: Use \`agent-browser\` commands (e.g., \`agent-browser open URL\`, \`agent-browser snapshot\`)
+3. For non-UI work or testable behavior: Use test-driven development (write failing tests first, iterate until they pass)
+4. Include Playwright tests, unit tests, or E2E tests as needed for verification
 
 The process should be tailored to the specific task - define what needs to be checked, what "done" looks like, and how to iterate.
 `;
@@ -479,13 +466,13 @@ Important rules:
 - Only include fields that actually need to change in each update
 - Provide clear reasons explaining what was modified and why
 - Maintain category consistency (feature, bug, enhancement, refactor)
-- **CRITICAL**: Do NOT create features for Playwright tests, E2E tests, unit tests, visual QA, accessibility testing, or any automated testing. Verification happens during implementation using agent-browser - testing is NOT a separate feature.
 
-**CRITICAL - Iterative Execution:**
+**Iterative Execution:**
 Updated feature descriptions MUST include:
 1. A clear iterative process specific to the task with defined success criteria
-2. For UI work: Use \`agent-browser\` commands for ALL browser interactions (opening pages, taking screenshots, clicking, verifying). Do NOT reference "Chrome" or any browser by name - always use agent-browser commands like \`agent-browser open URL\`, \`agent-browser snapshot\`, etc.
-3. For non-UI work: Use test-driven development (write failing tests first, iterate until they pass)
+2. For UI work requiring visual confirmation: Use \`agent-browser\` commands (e.g., \`agent-browser open URL\`, \`agent-browser snapshot\`)
+3. For non-UI work or testable behavior: Use test-driven development (write failing tests first, iterate until they pass)
+4. Include Playwright tests, unit tests, or E2E tests as needed for verification
 
 The process should be tailored to the specific task - define what needs to be checked, what "done" looks like, and how to iterate.
 `;
