@@ -79,6 +79,7 @@ export function useBoardActions({
     moveFeature,
     useWorktrees,
     useBrowserMode,
+    browserToolMode,
     enableDependencyBlocking,
     isPrimaryWorktreeBranch,
     getPrimaryWorktreeBranch,
@@ -342,7 +343,8 @@ export function useBoardActions({
           feature.id,
           useWorktrees,
           undefined, // worktreePath - server derives from feature.branchName
-          useBrowserMode
+          useBrowserMode,
+          browserToolMode
         );
 
         if (result.success) {
@@ -356,7 +358,7 @@ export function useBoardActions({
         await loadFeatures();
       }
     },
-    [currentProject, useWorktrees, useBrowserMode, loadFeatures]
+    [currentProject, useWorktrees, useBrowserMode, browserToolMode, loadFeatures]
   );
 
   const handleStartImplementation = useCallback(

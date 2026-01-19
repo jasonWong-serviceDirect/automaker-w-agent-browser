@@ -25,6 +25,7 @@ import type {
   CreateIdeaInput,
   UpdateIdeaInput,
   ConvertToFeatureOptions,
+  BrowserToolMode,
 } from '@automaker/types';
 import { getJSON, setJSON, removeItem } from './storage';
 
@@ -504,7 +505,9 @@ export interface AutoModeAPI {
     projectPath: string,
     featureId: string,
     useWorktrees?: boolean,
-    worktreePath?: string
+    worktreePath?: string,
+    useBrowserMode?: boolean,
+    browserToolMode?: BrowserToolMode
   ) => Promise<{ success: boolean; passes?: boolean; error?: string }>;
   verifyFeature: (
     projectPath: string,
@@ -1768,7 +1771,9 @@ function createMockAutoModeAPI(): AutoModeAPI {
       projectPath: string,
       featureId: string,
       useWorktrees?: boolean,
-      worktreePath?: string
+      worktreePath?: string,
+      useBrowserMode?: boolean,
+      browserToolMode?: BrowserToolMode
     ) => {
       if (mockRunningFeatures.has(featureId)) {
         return {
@@ -1778,7 +1783,7 @@ function createMockAutoModeAPI(): AutoModeAPI {
       }
 
       console.log(
-        `[Mock] Running feature ${featureId} with useWorktrees: ${useWorktrees}, worktreePath: ${worktreePath}`
+        `[Mock] Running feature ${featureId} with useWorktrees: ${useWorktrees}, worktreePath: ${worktreePath}, useBrowserMode: ${useBrowserMode}, browserToolMode: ${browserToolMode}`
       );
       mockRunningFeatures.add(featureId);
       simulateAutoModeLoop(projectPath, featureId);

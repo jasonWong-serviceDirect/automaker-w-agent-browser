@@ -535,6 +535,14 @@ export interface BoardBackgroundSettings {
 }
 
 /**
+ * BrowserToolMode - Browser automation mode selection
+ *
+ * - 'agent-browser': Uses agent-browser CLI commands via Bash (default)
+ * - 'chrome-extension': Uses chrome-devtools-mcp MCP server with per-feature isolation
+ */
+export type BrowserToolMode = 'agent-browser' | 'chrome-extension';
+
+/**
  * BrowserTestSettings - Configuration for agent-browser UI testing
  *
  * Enables automated browser testing using agent-browser with named sessions.
@@ -550,6 +558,8 @@ export interface BrowserTestSettings {
     email: string;
     password: string;
   };
+  /** Browser tool mode: 'agent-browser' (default) or 'chrome-extension' */
+  toolMode?: BrowserToolMode;
 }
 
 /**

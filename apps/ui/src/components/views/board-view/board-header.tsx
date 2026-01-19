@@ -3,11 +3,22 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Plus, Bot, Wand2, Pencil, Globe } from 'lucide-react';
 import { KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts';
 import { ClaudeUsagePopover } from '@/components/claude-usage-popover';
 import { useAppStore } from '@/store/app-store';
 import { useSetupStore } from '@/store/setup-store';
+import type { BrowserToolMode } from '@automaker/types';
+
+// Combined value for the browser mode dropdown
+type BrowserModeValue = 'off' | BrowserToolMode;
 
 interface BoardHeaderProps {
   projectName: string;
@@ -17,7 +28,8 @@ interface BoardHeaderProps {
   isAutoModeRunning: boolean;
   onAutoModeToggle: (enabled: boolean) => void;
   useBrowserMode: boolean;
-  onBrowserModeToggle: (enabled: boolean) => void;
+  browserToolMode: BrowserToolMode;
+  onBrowserModeChange: (useBrowserMode: boolean, browserToolMode: BrowserToolMode) => void;
   onAddFeature: () => void;
   onOpenPlanDialog: () => void;
   onOpenModifyDialog: () => void;
@@ -37,13 +49,25 @@ export function BoardHeader({
   isAutoModeRunning,
   onAutoModeToggle,
   useBrowserMode,
-  onBrowserModeToggle,
+  browserToolMode,
+  onBrowserModeChange,
   onAddFeature,
   onOpenPlanDialog,
   onOpenModifyDialog,
   addFeatureShortcut,
   isMounted,
 }: BoardHeaderProps) {
+  // Compute the combined value for the dropdown
+  const browserModeValue: BrowserModeValue = useBrowserMode ? browserToolMode : 'off';
+
+  // Handle dropdown change
+  const handleBrowserModeChange = (value: BrowserModeValue) => {
+    if (value === 'off') {
+      onBrowserModeChange(false, browserToolMode);
+    } else {
+      onBrowserModeChange(true, value as BrowserToolMode);
+    }
+  };
   const apiKeys = useAppStore((state) => state.apiKeys);
   const claudeAuthStatus = useSetupStore((state) => state.claudeAuthStatus);
 
@@ -106,19 +130,23 @@ export function BoardHeader({
           </div>
         )}
 
-        {/* Browser Mode Toggle - only show after mount to prevent hydration issues */}
+        {/* Browser Mode Dropdown - only show after mount to prevent hydration issues */}
         {isMounted && (
-          <div className={controlContainerClass} data-testid="browser-mode-toggle-container">
+          <div className={controlContainerClass} data-testid="browser-mode-container">
             <Globe className="w-4 h-4 text-muted-foreground" />
-            <Label htmlFor="browser-mode-toggle" className="text-sm font-medium cursor-pointer">
-              Browser
-            </Label>
-            <Switch
-              id="browser-mode-toggle"
-              checked={useBrowserMode}
-              onCheckedChange={onBrowserModeToggle}
-              data-testid="browser-mode-toggle"
-            />
+            <Select value={browserModeValue} onValueChange={handleBrowserModeChange}>
+              <SelectTrigger
+                className="w-[130px] h-6 border-0 bg-transparent focus:ring-0 focus:ring-offset-0"
+                data-testid="browser-mode-select"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="off">Off</SelectItem>
+                <SelectItem value="agent-browser">agent-browser</SelectItem>
+                <SelectItem value="chrome-extension">Chrome MCP</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
 

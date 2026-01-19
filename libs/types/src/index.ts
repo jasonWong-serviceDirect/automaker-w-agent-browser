@@ -89,6 +89,7 @@ export type {
   WorktreeInfo,
   ProjectSettings,
   BrowserTestSettings,
+  BrowserToolMode,
 } from './settings.js';
 export {
   DEFAULT_KEYBOARD_SHORTCUTS,

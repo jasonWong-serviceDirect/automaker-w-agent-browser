@@ -20,8 +20,10 @@ import type {
   ThinkingLevel,
   PlanningMode,
   BrowserTestSettings,
+  BrowserToolMode,
 } from '@automaker/types';
 import { DEFAULT_PHASE_MODELS } from '@automaker/types';
+import { CHROME_MCP_INSTRUCTIONS } from '@automaker/prompts';
 import {
   buildPromptWithImages,
   isAbortError,
@@ -441,6 +443,7 @@ export class AutoModeService {
     options?: {
       continuationPrompt?: string;
       useChromeMode?: boolean;
+      browserToolMode?: BrowserToolMode;
     }
   ): Promise<void> {
     if (this.runningFeatures.has(featureId)) {
@@ -544,6 +547,18 @@ export class AutoModeService {
       // (SDK handles CLAUDE.md via settingSources), but keep other context files like CODE_QUALITY.md
       const contextFilesPrompt = filterClaudeMdFromContext(contextResult, autoLoadClaudeMd);
 
+      // Load project settings for browser test configuration (needed for both continuation and normal flow)
+      const projectSettings = await this.settingsService?.getProjectSettings(projectPath);
+      const browserTestSettings = projectSettings?.browserTest;
+
+      // Determine browser tool mode: options > settings > default ('agent-browser')
+      const browserToolMode: BrowserToolMode =
+        options?.browserToolMode ?? browserTestSettings?.toolMode ?? 'agent-browser';
+
+      // Browser mode enabled when toggle is on and settings are configured
+      const globalBrowserEnabled = options?.useChromeMode ?? false;
+      const useBrowserMode = globalBrowserEnabled && !!browserTestSettings;
+
       if (options?.continuationPrompt) {
         // Continuation prompt is used when recovering from a plan approval
         // The plan was already approved, so skip the planning phase
@@ -551,15 +566,12 @@ export class AutoModeService {
         logger.info(`Using continuation prompt for feature ${featureId}`);
       } else {
         // Normal flow: build prompt with planning phase
-        // Load project settings for browser test configuration
-        const projectSettings = await this.settingsService?.getProjectSettings(projectPath);
-        const browserTestSettings = projectSettings?.browserTest;
-
-        // Browser mode enabled when toggle is on and settings are configured
-        const globalBrowserEnabled = options?.useChromeMode ?? false;
-        const useBrowserMode = globalBrowserEnabled && !!browserTestSettings;
-
-        const featurePrompt = this.buildFeaturePrompt(feature, useBrowserMode, browserTestSettings);
+        const featurePrompt = this.buildFeaturePrompt(
+          feature,
+          useBrowserMode,
+          browserTestSettings,
+          browserToolMode
+        );
         const planningPrefix = await this.getPlanningPromptPrefix(feature);
         prompt = planningPrefix + featurePrompt;
 
@@ -591,7 +603,6 @@ export class AutoModeService {
 
       // Run the agent with the feature's model and images
       // Context files are passed as system prompt for higher priority
-      // Note: useChromeMode is now deprecated - we use agent-browser via prompts instead
       await this.runAgent(
         workDir,
         featureId,
@@ -607,7 +618,8 @@ export class AutoModeService {
           systemPrompt: contextFilesPrompt || undefined,
           autoLoadClaudeMd,
           thinkingLevel: feature.thinkingLevel,
-          useChromeMode: false, // Deprecated - browser testing via agent-browser prompts
+          useBrowserMode,
+          browserToolMode,
         }
       );
 
@@ -2120,7 +2132,8 @@ Respond with ONLY the bullet points, no preamble or explanation.`,
   private buildFeaturePrompt(
     feature: Feature,
     useBrowserMode: boolean = false,
-    browserTestSettings?: BrowserTestSettings
+    browserTestSettings?: BrowserTestSettings,
+    browserToolMode: BrowserToolMode = 'agent-browser'
   ): string {
     const title = this.extractTitleFromDescription(feature.description);
 
@@ -2163,13 +2176,53 @@ You can use the Read tool to view these images at any time during implementation
     // Add verification instructions based on testing mode
     // Browser mode takes priority when enabled and configured
     if (useBrowserMode && browserTestSettings) {
-      // Automated verification - implement and verify using agent-browser
-      const sessionName = `feature-${feature.id}`;
-      const baseUrl = browserTestSettings.url;
-      const loginPath = browserTestSettings.loginPath || '/auth/login';
-      const credentials = browserTestSettings.credentials;
+      if (browserToolMode === 'chrome-extension') {
+        // Chrome MCP mode - use chrome-devtools-mcp for browser testing
+        const baseUrl = browserTestSettings.url;
 
-      prompt += `
+        prompt += `
+## Instructions
+
+Implement this feature using an iterative approach with visual verification:
+
+1. First, explore the codebase to understand the existing structure
+2. Plan your implementation approach
+3. Implement the changes in small, testable increments
+4. **After each significant change, use chrome-devtools-mcp tools to visually verify it works correctly**
+5. If something doesn't work as expected, fix it immediately before continuing
+6. Repeat until all requirements are satisfied
+
+${CHROME_MCP_INSTRUCTIONS}
+
+**Base URL for testing:** ${baseUrl}
+
+When done, wrap your final summary in <summary> tags like this:
+
+<summary>
+## Summary: [Feature Title]
+
+### Changes Implemented
+- [List of changes made]
+
+### Files Modified
+- [List of files]
+
+### Verification Status
+- [Describe what was visually verified in browser]
+
+### Notes for Developer
+- [Any important notes]
+</summary>
+
+This helps parse your summary correctly in the output logs.`;
+      } else {
+        // agent-browser mode (default) - use agent-browser CLI commands
+        const sessionName = `feature-${feature.id}`;
+        const baseUrl = browserTestSettings.url;
+        const loginPath = browserTestSettings.loginPath || '/auth/login';
+        const credentials = browserTestSettings.credentials;
+
+        prompt += `
 ## Instructions
 
 Implement this feature using an iterative approach with visual verification:
@@ -2229,6 +2282,7 @@ When done, wrap your final summary in <summary> tags like this:
 </summary>
 
 This helps parse your summary correctly in the output logs.`;
+      }
     } else if (feature.skipTests) {
       // Manual verification - just implement the feature (no automated tests)
       prompt += `
@@ -2306,7 +2360,8 @@ This helps parse your summary correctly in the output logs.`;
       systemPrompt?: string;
       autoLoadClaudeMd?: boolean;
       thinkingLevel?: ThinkingLevel;
-      useChromeMode?: boolean;
+      useBrowserMode?: boolean;
+      browserToolMode?: BrowserToolMode;
     }
   ): Promise<void> {
     const finalProjectPath = options?.projectPath || projectPath;
@@ -2390,7 +2445,25 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
     const enableSandboxMode = await getEnableSandboxModeSetting(this.settingsService, '[AutoMode]');
 
     // Load MCP servers from settings (global setting only)
-    const mcpServers = await getMCPServersFromSettings(this.settingsService, '[AutoMode]');
+    let mcpServers = await getMCPServersFromSettings(this.settingsService, '[AutoMode]');
+
+    // Inject Chrome MCP server when using chrome-extension mode
+    if (options?.useBrowserMode && options?.browserToolMode === 'chrome-extension') {
+      const chromeMcpConfig = {
+        type: 'stdio' as const,
+        command: 'npx',
+        args: [
+          '-y',
+          'chrome-devtools-mcp@latest',
+          `--user-data-dir=/tmp/automaker-chrome/${featureId}`,
+        ],
+      };
+      mcpServers = {
+        ...mcpServers,
+        [`chrome-${featureId}`]: chromeMcpConfig,
+      };
+      logger.info(`Injected Chrome MCP server for feature ${featureId} (chrome-extension mode)`);
+    }
 
     // Build SDK options using centralized configuration for feature implementation
     const sdkOptions = createAutoModeOptions({

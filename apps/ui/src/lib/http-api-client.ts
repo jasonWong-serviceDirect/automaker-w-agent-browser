@@ -38,6 +38,7 @@ import type {
 import type { Message, SessionListItem } from '@/types/electron';
 import type { Feature, ClaudeUsageResponse } from '@/store/app-store';
 import type { WorktreeAPI, GitAPI, ModelDefinition, ProviderStatus } from '@/types/electron';
+import type { BrowserToolMode } from '@automaker/types';
 import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
 const logger = createLogger('HttpClient');
@@ -1247,14 +1248,16 @@ export class HttpApiClient implements ElectronAPI {
       featureId: string,
       useWorktrees?: boolean,
       worktreePath?: string,
-      useBrowserMode?: boolean
+      useBrowserMode?: boolean,
+      browserToolMode?: BrowserToolMode
     ) =>
       this.post('/api/auto-mode/run-feature', {
         projectPath,
         featureId,
         useWorktrees,
         worktreePath,
-        useChromeMode: useBrowserMode, // API still uses useChromeMode for backwards compatibility
+        useChromeMode: useBrowserMode,
+        browserToolMode,
       }),
     verifyFeature: (projectPath: string, featureId: string) =>
       this.post('/api/auto-mode/verify-feature', { projectPath, featureId }),

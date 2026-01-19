@@ -20,6 +20,45 @@ import { STATIC_PORT, SERVER_PORT } from '@automaker/types';
 
 /**
  * ========================================================================
+ * BROWSER MODE INSTRUCTIONS
+ * ========================================================================
+ */
+
+/**
+ * Chrome MCP (chrome-devtools-mcp) instructions for browser testing
+ * Used when browserToolMode is 'chrome-extension'
+ */
+export const CHROME_MCP_INSTRUCTIONS = `## Browser Testing with chrome-devtools-mcp
+
+You have access to chrome-devtools-mcp tools for visual verification of your changes.
+Use these tools to navigate, interact with elements, and verify the UI works correctly.
+
+### Available Tools
+- **chrome_navigate**: Navigate to a URL
+- **chrome_screenshot**: Capture the current page state
+- **chrome_click**: Click an element by CSS selector
+- **chrome_type**: Type text into an input field
+- **chrome_get_dom**: Get the DOM tree for analysis
+- **chrome_evaluate**: Execute JavaScript in the page context
+
+### Workflow
+1. Navigate to the relevant page using chrome_navigate
+2. Take a screenshot to see the current state
+3. Interact with elements (clicks, form inputs)
+4. Check for visual correctness and console errors
+5. Fix any issues found and re-verify
+6. Continue iterating until the feature works correctly
+
+### Important Notes
+- Always take a screenshot after significant changes to visually verify
+- Use chrome_get_dom if you need to find element selectors
+- The browser session is isolated per-feature for safety
+
+Do NOT mark tasks complete without visual confirmation in the browser.
+`;
+
+/**
+ * ========================================================================
  * AUTO MODE PROMPTS
  * ========================================================================
  */

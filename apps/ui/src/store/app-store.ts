@@ -16,6 +16,7 @@ import type {
   PipelineConfig,
   PipelineStep,
   PromptCustomization,
+  BrowserToolMode,
 } from '@automaker/types';
 import { getAllCursorModelIds, DEFAULT_PHASE_MODELS } from '@automaker/types';
 
@@ -453,6 +454,7 @@ export interface AppState {
   autoModeActivityLog: AutoModeActivity[];
   maxConcurrency: number; // Maximum number of concurrent agent tasks
   useBrowserMode: boolean; // Whether to use agent-browser for visual verification
+  browserToolMode: BrowserToolMode; // Browser tool mode: 'agent-browser' or 'chrome-extension'
 
   // Kanban Card Display Settings
   kanbanCardDetailLevel: KanbanCardDetailLevel; // Level of detail shown on kanban cards
@@ -743,6 +745,7 @@ export interface AppActions {
   clearAutoModeActivity: () => void;
   setMaxConcurrency: (max: number) => void;
   setUseBrowserMode: (value: boolean) => void;
+  setBrowserToolMode: (mode: BrowserToolMode) => void;
 
   // Kanban Card Settings actions
   setKanbanCardDetailLevel: (level: KanbanCardDetailLevel) => void;
@@ -1005,6 +1008,7 @@ const initialState: AppState = {
   autoModeActivityLog: [],
   maxConcurrency: 3, // Default to 3 concurrent agents
   useBrowserMode: false, // Default to browser mode disabled (requires browserTest settings)
+  browserToolMode: 'agent-browser' as BrowserToolMode, // Default to agent-browser CLI mode
   kanbanCardDetailLevel: 'standard', // Default to standard detail level
   boardViewMode: 'kanban', // Default to kanban view
   defaultSkipTests: true, // Default to manual verification (tests disabled)
@@ -1574,6 +1578,7 @@ export const useAppStore = create<AppState & AppActions>()(
         // agent-browser uses named sessions enabling parallel feature testing
       },
       setUseBrowserMode: (value) => set({ useBrowserMode: value }),
+      setBrowserToolMode: (mode) => set({ browserToolMode: mode }),
 
       // Kanban Card Settings actions
       setKanbanCardDetailLevel: (level) => set({ kanbanCardDetailLevel: level }),
