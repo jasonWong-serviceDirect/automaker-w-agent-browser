@@ -33,12 +33,18 @@ Create a brief planning outline:
 1. **Goal**: What are we accomplishing? (1 sentence)
 2. **Approach**: How will we do it? (2-3 sentences)
 3. **Files to Touch**: List files and what changes
-4. **Tasks**: Numbered task list (3-7 items) - include testing tasks if appropriate for verification
+4. **Tasks**: Use this EXACT format (the system will parse these):
+   \`\`\`tasks
+   - [ ] T001: [Description] | File: [path/to/file]
+   - [ ] T002: [Description] | File: [path/to/file]
+   - [ ] T003: [Description] | File: [path/to/file]
+   \`\`\`
 5. **Risks**: Any gotchas to watch for
+
 After generating the outline, output:
 "[PLAN_GENERATED] Planning outline complete."
 
-Then proceed with implementation.
+DO NOT proceed with implementation - the system will execute each task with a dedicated agent.
 `;
 
 export const DEFAULT_AUTO_MODE_PLANNING_LITE_WITH_APPROVAL = `## Planning Phase (Lite Mode)

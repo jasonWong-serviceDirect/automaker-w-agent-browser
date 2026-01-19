@@ -2600,16 +2600,22 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
               // Schedule incremental file write (debounced)
               scheduleWrite();
 
+              // Detect spec marker for approval modes, or plan marker for lite mode
+              const specMarkerDetected = responseText.includes('[SPEC_GENERATED]');
+              const planMarkerDetected =
+                planningMode === 'lite' && responseText.includes('[PLAN_GENERATED]');
+
               // Check for [SPEC_GENERATED] marker in planning modes (spec or full)
+              // OR [PLAN_GENERATED] marker in lite mode (triggers multi-agent execution)
               if (
-                planningModeRequiresApproval &&
                 !specDetected &&
-                responseText.includes('[SPEC_GENERATED]')
+                ((planningModeRequiresApproval && specMarkerDetected) || planMarkerDetected)
               ) {
                 specDetected = true;
 
                 // Extract plan content (everything before the marker)
-                const markerIndex = responseText.indexOf('[SPEC_GENERATED]');
+                const marker = specMarkerDetected ? '[SPEC_GENERATED]' : '[PLAN_GENERATED]';
+                const markerIndex = responseText.indexOf(marker);
                 const planContent = responseText.substring(0, markerIndex).trim();
 
                 // Parse tasks from the generated spec (for spec and full modes)
@@ -2620,6 +2626,11 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
                 logger.info(`Parsed ${tasksTotal} tasks from spec for feature ${featureId}`);
                 if (parsedTasks.length > 0) {
                   logger.info(`Tasks: ${parsedTasks.map((t) => t.id).join(', ')}`);
+                }
+                if (planMarkerDetected && !requiresApproval) {
+                  logger.info(
+                    `Lite mode: proceeding directly to multi-agent execution (no approval required)`
+                  );
                 }
 
                 // Update planSpec status to 'generated' and save content with parsed tasks

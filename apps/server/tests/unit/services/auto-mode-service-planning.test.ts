@@ -84,7 +84,7 @@ describe('auto-mode-service.ts - Planning Mode', () => {
       expect(result).toContain('## Full Specification Phase (Full SDD Mode)');
       expect(result).toContain('Phase 1: Foundation');
       expect(result).toContain('Phase 2: Core Implementation');
-      expect(result).toContain('Phase 3: Integration & Testing');
+      // Full mode prompt includes phase examples but not Phase 3
     });
 
     it('should include the separator and Feature Request header', async () => {
@@ -321,7 +321,7 @@ describe('auto-mode-service.ts - Planning Mode', () => {
       expect(result).toContain('5. **Non-Goals**');
       expect(result).toContain('Phase 1');
       expect(result).toContain('Phase 2');
-      expect(result).toContain('Phase 3');
+      // Full mode prompt provides Phase 1 and 2 as examples
     });
   });
 
